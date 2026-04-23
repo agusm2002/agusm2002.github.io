@@ -1,35 +1,119 @@
 ---
+interface Props {
+  lang?: 'es' | 'en';
+}
+
+const { lang = 'es' } = Astro.props;
+const isEnglish = lang === 'en';
+
 const stack = ['Ubuntu Server', 'Docker', 'Ansible', 'ZeroTier', 'Nginx', 'Uptime Kuma', 'GitHub Actions'];
 const baseUrl = import.meta.env.BASE_URL;
 
+const text = isEnglish
+  ? {
+      sectionLabel: 'Projects',
+      sectionTitle: 'What I have built',
+      sectionSub: 'Main project - real enterprise infrastructure simulation.',
+      featuredBadge: 'Featured Project',
+      viewGithubAria: 'View on GitHub',
+      mainDesc:
+        'Real infrastructure platform on Ubuntu Server ARM64: containerized applications exposed via Nginx reverse proxy, full provisioning and hardening with Ansible (UFW, Fail2Ban, ClamAV, SSH), private ZeroTier network, and CI/CD with self-hosted GitHub Actions.',
+      viewRepo: 'View repository',
+      nextUpdate: 'Next update: migrate to the cloud',
+      archLabel: 'Real architecture',
+      moreProjectsTitle: 'More projects',
+      moreProjectsSub:
+        'Before specializing in infrastructure, I explored other branches to find what truly motivates me. These projects show that when I decide to learn something, I go all in.',
+      chronoAria: 'View Chrono Reader on GitHub',
+      chronoDesc:
+        'Native iOS app built from scratch with Swift and SwiftUI. Read CBZ/CBR comics, digital books, and M4B audiobooks with chapter playback, variable speed, and a custom color collection system.',
+      chronoFeature1: 'Unified library: audiobooks, comics, and books in one app',
+      chronoFeature2: '3 reading modes: Manga RTL, Comic LTR, and Webtoon (vertical scroll)',
+      chronoFeature3: 'Audiobook player with chapter navigation and variable speed',
+      chronoFeature4: 'Collections with color picker, preview, and book counter',
+      chronoAltComic: 'Comic reader in Chrono Reader',
+      chronoAltAudio: 'Audiobook player in Chrono Reader',
+      chronoAltLibrary: 'Library view in Chrono Reader',
+    }
+  : {
+      sectionLabel: 'Proyectos',
+      sectionTitle: 'Lo que he construido',
+      sectionSub: 'Proyecto principal - simulación de infraestructura empresarial real.',
+      featuredBadge: 'Proyecto Destacado',
+      viewGithubAria: 'Ver en GitHub',
+      mainDesc:
+        'Plataforma de infraestructura real sobre Ubuntu Server ARM64: aplicaciones dockerizadas expuestas via Nginx reverse proxy, aprovisionamiento y hardening completo con Ansible (UFW, Fail2Ban, ClamAV, SSH), red privada ZeroTier y CI/CD con GitHub Actions self-hosted.',
+      viewRepo: 'Ver repositorio',
+      nextUpdate: 'Próximo update: migrar a la nube',
+      archLabel: 'Arquitectura real',
+      moreProjectsTitle: 'Más proyectos',
+      moreProjectsSub:
+        'Antes de especializarme en infra, exploré otras ramas para encontrar qué me apasionaba de verdad. Estos proyectos demuestran que cuando me propongo aprender algo, lo hago en serio.',
+      chronoAria: 'Ver Chrono Reader en GitHub',
+      chronoDesc:
+        'App iOS nativa construida desde cero con Swift y SwiftUI. Lee cómics CBZ/CBR, libros digitales y audiolibros M4B con reproductor de capítulos, velocidad variable y sistema de colecciones con color personalizado.',
+      chronoFeature1: 'Biblioteca unificada: audiolibros, cómics y libros en una sola app',
+      chronoFeature2: '3 modos de lectura: Manga RTL, Comic LTR y Webtoon (scroll vertical)',
+      chronoFeature3: 'Reproductor de audiolibros con navegación por capítulos y velocidad variable',
+      chronoFeature4: 'Colecciones con selector de color, vista previa y conteo de libros',
+      chronoAltComic: 'Lector de cómic en Chrono Reader',
+      chronoAltAudio: 'Reproductor de audiolibros en Chrono Reader',
+      chronoAltLibrary: 'Biblioteca en Chrono Reader',
+    };
+
 const features = [
-  { icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`, text: 'Ubuntu Server ARM64 como base, aprovisionado con Ansible (10+ roles de hardening)' },
-  { icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><rect x="2" y="10" width="20" height="5" rx="1"/><circle cx="6" cy="5.5" r=".75" fill="currentColor" stroke="none"/><circle cx="6" cy="12.5" r=".75" fill="currentColor" stroke="none"/></svg>`, text: 'Multi-contenedor con Docker Compose: Frontend, Backend, Admin, DB, API' },
-  { icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`, text: 'Nginx reverse proxy con virtual hosts por subdominio (agrosinergia.local, safetek.local)' },
-  { icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 012 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>`, text: 'CI/CD con GitHub Actions, self-hosted runners ARM64, multi-arch builds con Buildx' },
-  { icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M11.5 3a17 17 0 000 18M12.5 3a17 17 0 010 18"/></svg>`, text: 'Red privada ZeroTier + SSH hardened (puerto alto, no root, no password auth)' },
+  {
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`,
+    text: isEnglish
+      ? 'Ubuntu Server ARM64 as the base, provisioned with Ansible (10+ hardening roles)'
+      : 'Ubuntu Server ARM64 como base, aprovisionado con Ansible (10+ roles de hardening)',
+  },
+  {
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="5" rx="1"/><rect x="2" y="10" width="20" height="5" rx="1"/><circle cx="6" cy="5.5" r=".75" fill="currentColor" stroke="none"/><circle cx="6" cy="12.5" r=".75" fill="currentColor" stroke="none"/></svg>`,
+    text: isEnglish
+      ? 'Multi-container setup with Docker Compose: Frontend, Backend, Admin, DB, API'
+      : 'Multi-contenedor con Docker Compose: Frontend, Backend, Admin, DB, API',
+  },
+  {
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+    text: isEnglish
+      ? 'Nginx reverse proxy with per-subdomain virtual hosts (agrosinergia.local, safetek.local)'
+      : 'Nginx reverse proxy con virtual hosts por subdominio (agrosinergia.local, safetek.local)',
+  },
+  {
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 012 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>`,
+    text: isEnglish
+      ? 'CI/CD with GitHub Actions, ARM64 self-hosted runners, and multi-arch builds via Buildx'
+      : 'CI/CD con GitHub Actions, self-hosted runners ARM64, multi-arch builds con Buildx',
+  },
+  {
+    icon: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1018 0 9 9 0 00-18 0"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M11.5 3a17 17 0 000 18M12.5 3a17 17 0 010 18"/></svg>`,
+    text: isEnglish
+      ? 'Private ZeroTier network + hardened SSH (high port, no root, no password auth)'
+      : 'Red privada ZeroTier + SSH hardened (puerto alto, no root, no password auth)',
+  },
 ];
 ---
 
 <section id="projects" class="section">
   <div class="container">
-    <p class="section-label reveal">Proyectos</p>
-    <h2 class="section-title reveal" style="margin-bottom:0.75rem">Lo que he construido</h2>
-    <p class="proj__sub reveal">Proyecto principal — simulación de infraestructura empresarial real.</p>
+    <p class="section-label reveal">{text.sectionLabel}</p>
+    <h2 class="section-title reveal" style="margin-bottom:0.75rem">{text.sectionTitle}</h2>
+    <p class="proj__sub reveal">{text.sectionSub}</p>
 
     <article class="proj-card reveal">
       <!-- Top bar -->
       <div class="proj-card__header">
         <div class="proj-card__badge">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          Proyecto Destacado
+          {text.featuredBadge}
         </div>
         <a
           href="https://github.com/agusm2002/simulated-enterprise-devops-infrastructure-lab"
           target="_blank"
           rel="noopener noreferrer"
           class="proj-card__gh-link"
-          aria-label="Ver en GitHub"
+          aria-label={text.viewGithubAria}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
           <span>GitHub</span>
@@ -47,10 +131,7 @@ const features = [
           </h3>
 
           <p class="proj-card__desc">
-            Plataforma de infraestructura real sobre Ubuntu Server ARM64:
-            aplicaciones dockerizadas expuestas vía Nginx reverse proxy,
-            aprovisionamiento y hardening completo con Ansible (UFW, Fail2Ban, ClamAV, SSH),
-            red privada ZeroTier y CI/CD con GitHub Actions self-hosted.
+            {text.mainDesc}
           </p>
 
           <ul class="proj-features" role="list">
@@ -74,19 +155,19 @@ const features = [
               class="btn btn-primary proj-cta"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
-              Ver repositorio
+              {text.viewRepo}
             </a>
 
             <div class="proj-roadmap">
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
-              <span>Próximo update: migrar a la nube</span>
+              <span>{text.nextUpdate}</span>
             </div>
           </div>
         </div>
 
         <!-- Right: architecture diagram -->
         <div class="proj-arch" aria-hidden="true">
-          <div class="arch-label">Arquitectura real</div>
+          <div class="arch-label">{text.archLabel}</div>
           <div class="arch-diagram">
 
             <!-- Layer 1: CI/CD -->
@@ -173,10 +254,9 @@ const features = [
 
     <!-- ── Other projects ── -->
     <div class="other-projs reveal">
-      <h3 class="other-projs__title">Más proyectos</h3>
+      <h3 class="other-projs__title">{text.moreProjectsTitle}</h3>
       <p class="other-projs__sub">
-        Antes de especializarme en infra exploré otras ramas — para encontrar qué me apasionaba de verdad.
-        Estos proyectos demuestran que cuando me propongo aprender algo, lo hago en serio.
+        {text.moreProjectsSub}
       </p>
     </div>
 
@@ -196,7 +276,7 @@ const features = [
               target="_blank"
               rel="noopener noreferrer"
               class="mini-card__gh-link"
-              aria-label="Ver Chrono Reader en GitHub"
+              aria-label={text.chronoAria}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
               <span>GitHub</span>
@@ -207,28 +287,25 @@ const features = [
           <h4 class="mini-card__title">Chrono Reader</h4>
 
           <p class="mini-card__desc">
-            App iOS nativa construida desde cero con Swift y SwiftUI.
-            Lee cómics <span class="mini-mono">CBZ/CBR</span>, libros digitales y audiolibros <span class="mini-mono">M4B</span>
-            con reproductor de capítulos, velocidad variable y sistema de colecciones con color personalizado.
-            El proyecto con el que aprendí desarrollo mobile en serio.
+            {text.chronoDesc}
           </p>
 
           <ul class="mini-features" role="list">
             <li class="mini-feature">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
-              Biblioteca unificada: audiolibros, cómics y libros en una sola app
+              {text.chronoFeature1}
             </li>
             <li class="mini-feature">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-              3 modos de lectura: Manga RTL, Cómic LTR y Webtoon (scroll vertical)
+              {text.chronoFeature2}
             </li>
             <li class="mini-feature">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 18v-6a9 9 0 0118 0v6"/><path d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"/></svg>
-              Reproductor de audiolibros con navegación por capítulos y velocidad variable
+              {text.chronoFeature3}
             </li>
             <li class="mini-feature">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
-              Colecciones con selector de color, vista previa y conteo de libros
+              {text.chronoFeature4}
             </li>
           </ul>
 
@@ -248,7 +325,7 @@ const features = [
             class="btn btn-ghost mini-cta"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>
-            Ver repositorio
+            {text.viewRepo}
           </a>
         </div>
 
@@ -257,21 +334,21 @@ const features = [
           <div class="screens-fan">
             <img
               src={`${baseUrl}screenshots/chrono-comic.png?v=20260422`}
-              alt="Lector de cómic en Chrono Reader"
+              alt={text.chronoAltComic}
               class="fan-shot fan-shot--back"
               loading="eager"
               decoding="async"
             />
             <img
               src={`${baseUrl}screenshots/chrono-audio.png?v=20260422`}
-              alt="Reproductor de audiolibros en Chrono Reader"
+              alt={text.chronoAltAudio}
               class="fan-shot fan-shot--mid"
               loading="eager"
               decoding="async"
             />
             <img
               src={`${baseUrl}screenshots/chrono-library.png?v=20260422`}
-              alt="Biblioteca en Chrono Reader"
+              alt={text.chronoAltLibrary}
               class="fan-shot fan-shot--front"
               loading="eager"
               decoding="async"

@@ -1,4 +1,44 @@
 ---
+interface Props {
+  lang?: 'es' | 'en';
+}
+
+const { lang = 'es' } = Astro.props;
+const isEnglish = lang === 'en';
+
+const text = isEnglish
+  ? {
+      label: 'About me',
+      titleLine1: 'Passionate about',
+      titleLine2: 'infrastructure',
+      statYears: 'years with Linux',
+      statTerminal: 'hours in the terminal',
+      bio1:
+        'I am an advanced Computer Engineering student in Argentina. I am especially interested in everything behind systems: how they work, how they are deployed, and how they stay running.',
+      bio2:
+        'I love understanding things from the inside out: Linux, containers, CI/CD, and automation. Every project is an excuse to learn something new and build something real.',
+      learningTitle: 'Currently learning (04/2026)',
+      learningLinux: 'Advanced Linux',
+      learningLinuxDesc: 'systemd, hardening, scripts',
+      learningCloudDesc: 'AWS fundamentals, IaC, cloud-native architectures',
+      learningAnsibleDesc: 'Playbooks, roles, infra automation',
+    }
+  : {
+      label: 'Sobre mí',
+      titleLine1: 'Apasionado por la',
+      titleLine2: 'infraestructura',
+      statYears: 'años con Linux',
+      statTerminal: 'horas en la terminal',
+      bio1:
+        'Soy estudiante avanzado de Ingeniería en Informática en Argentina. Me atrae especialmente todo lo que está detrás de los sistemas: cómo funcionan, cómo se despliegan y cómo se mantienen corriendo.',
+      bio2:
+        'Me apasiona entender las cosas desde adentro: Linux, los contenedores, la CI/CD y la automatización. Cada proyecto es una excusa para aprender algo nuevo y construir algo real.',
+      learningTitle: 'Actualmente aprendiendo (04/2026)',
+      learningLinux: 'Linux Avanzado',
+      learningLinuxDesc: 'systemd, hardening, scripts',
+      learningCloudDesc: 'AWS fundamentos, IaC, arquitecturas cloud-native',
+      learningAnsibleDesc: 'Playbooks, roles, automatización de infra',
+    };
 ---
 
 <section id="about" class="section">
@@ -56,43 +96,39 @@
       <div class="about__stats">
         <div class="about__stat">
           <span class="about__stat-num">+3</span>
-          <span class="about__stat-label">años con Linux</span>
+          <span class="about__stat-label">{text.statYears}</span>
         </div>
         <div class="about__stat">
           <span class="about__stat-num">∞</span>
-          <span class="about__stat-label">horas en la terminal</span>
+          <span class="about__stat-label">{text.statTerminal}</span>
         </div>
       </div>
     </div>
 
     <!-- Text side -->
     <div class="about__content">
-      <p class="section-label reveal">Sobre mí</p>
+      <p class="section-label reveal">{text.label}</p>
       <h2 class="section-title reveal" style="margin-bottom: 1.5rem">
-        Apasionado por la<br /><span style="color:var(--green-400)">infraestructura</span>
+        {text.titleLine1}<br /><span style="color:var(--green-400)">{text.titleLine2}</span>
       </h2>
 
       <div class="about__bio reveal">
         <p>
-          Soy <strong>estudiante avanzado de Ingeniería en Informática</strong> en Argentina.
-          Me atrae especialmente todo lo que está detrás de los sistemas: cómo funcionan,
-          cómo se despliegan y cómo se mantienen corriendo.
+          {text.bio1}
         </p>
         <p>
-          Me apasiona entender las cosas <em>desde adentro</em>: Linux, los
-          contenedores, la <em>CI/CD</em> y la automatización. Cada proyecto es una excusa para aprender
-          algo nuevo y construir algo real.
+          {text.bio2}
         </p>
       </div>
 
       <div class="about__learning reveal">
-        <p class="about__learning-title">Actualmente aprendiendo (04/2026)</p>
+        <p class="about__learning-title">{text.learningTitle}</p>
         <div class="about__learning-grid">
           <div class="about__card">
             <span class="about__card-icon">🐧</span>
             <div>
-              <strong>Linux Avanzado</strong>
-              <p>systemd, hardening, scripts</p>
+              <strong>{text.learningLinux}</strong>
+              <p>{text.learningLinuxDesc}</p>
             </div>
           </div>
           <div class="about__card">
@@ -106,14 +142,14 @@
             <span class="about__card-icon">☁️</span>
             <div>
               <strong>Cloud</strong>
-              <p>AWS fundamentos, IaC, arquitecturas cloud-native</p>
+              <p>{text.learningCloudDesc}</p>
             </div>
           </div>
           <div class="about__card">
             <span class="about__card-icon">⚙️</span>
             <div>
               <strong>Ansible</strong>
-              <p>Playbooks, roles, automatización de infra</p>
+              <p>{text.learningAnsibleDesc}</p>
             </div>
           </div>
         </div>

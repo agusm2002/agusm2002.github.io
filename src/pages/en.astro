@@ -1,0 +1,30 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Nav from '../components/Nav.astro';
+import Hero from '../components/Hero.astro';
+import About from '../components/About.astro';
+import Skills from '../components/Skills.astro';
+import Projects from '../components/Projects.astro';
+import Contact from '../components/Contact.astro';
+
+const lang = 'en' as const;
+---
+
+<Layout
+  title="Agustin Monti - Portfolio"
+  lang={lang}
+  description="Portfolio of Agustin Monti - Computer Engineering student passionate about Linux, infrastructure, and automation."
+>
+  <Nav lang={lang} />
+  <main>
+    <Hero lang={lang} />
+    <div class="divider"></div>
+    <About lang={lang} />
+    <div class="divider"></div>
+    <Skills lang={lang} />
+    <div class="divider"></div>
+    <Projects lang={lang} />
+    <div class="divider"></div>
+    <Contact lang={lang} />
+  </main>
+</Layout>

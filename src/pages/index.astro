@@ -6,19 +6,25 @@ import About    from '../components/About.astro';
 import Skills   from '../components/Skills.astro';
 import Projects from '../components/Projects.astro';
 import Contact  from '../components/Contact.astro';
+
+const lang = 'es' as const;
 ---
 
-<Layout title="Agustín Monti — Portfolio">
-  <Nav />
+<Layout
+  title="Agustin Monti - Portfolio"
+  lang={lang}
+  description="Portfolio de Agustin Monti - Estudiante de Ingenieria en Informatica apasionado por Linux, infraestructura y automatizacion."
+>
+  <Nav lang={lang} />
   <main>
-    <Hero />
+    <Hero lang={lang} />
     <div class="divider"></div>
-    <About />
+    <About lang={lang} />
     <div class="divider"></div>
-    <Skills />
+    <Skills lang={lang} />
     <div class="divider"></div>
-    <Projects />
+    <Projects lang={lang} />
     <div class="divider"></div>
-    <Contact />
+    <Contact lang={lang} />
   </main>
 </Layout>

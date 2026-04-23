@@ -5,46 +5,83 @@ interface Category {
   skills: string[];
 }
 
+interface Props {
+  lang?: 'es' | 'en';
+}
+
+const { lang = 'es' } = Astro.props;
+const isEnglish = lang === 'en';
+
+const text = isEnglish
+  ? {
+      sectionLabel: 'Tech Stack',
+      sectionTitle: 'Tools',
+      sectionTitleTail: 'technologies',
+      sectionSub: 'What I use, study, and build with.',
+      categories: {
+        os: 'Operating Systems',
+        infra: 'Infrastructure & DevOps',
+        networking: 'Networking & Security',
+        scripting: 'Scripting & Programming',
+        databases: 'Databases',
+        tooling: 'Tooling & VCS',
+      },
+    }
+  : {
+      sectionLabel: 'Stack Técnico',
+      sectionTitle: 'Herramientas',
+      sectionTitleTail: 'tecnologías',
+      sectionSub: 'Lo que uso, estudio y con lo que construyo.',
+      categories: {
+        os: 'Sistemas Operativos',
+        infra: 'Infraestructura & DevOps',
+        networking: 'Redes & Seguridad',
+        scripting: 'Scripting & Programación',
+        databases: 'Bases de Datos',
+        tooling: 'Herramientas',
+      },
+    };
+
 // All SVGs are Tabler Icons (stroke-based, 24×24, stroke-width 1.75)
 const categories: Category[] = [
   {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>`,
-    label: 'Sistemas Operativos',
+    label: text.categories.os,
     skills: ['Linux', 'Debian', 'Ubuntu', 'Bash Shell'],
   },
   {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><rect x="2" y="10" width="20" height="5" rx="1"/><rect x="2" y="17" width="20" height="5" rx="1"/><circle cx="6" cy="5.5" r=".75" fill="currentColor" stroke="none"/><circle cx="6" cy="12.5" r=".75" fill="currentColor" stroke="none"/><circle cx="6" cy="19.5" r=".75" fill="currentColor" stroke="none"/></svg>`,
-    label: 'Infraestructura & DevOps',
+    label: text.categories.infra,
     skills: ['Docker', 'Ansible', 'CI/CD', 'GitHub Actions'],
   },
   {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/><path d="M12 8v4M6.5 18l5.5-6M17.5 18l-5.5-6"/></svg>`,
-    label: 'Redes & Seguridad',
+    label: text.categories.networking,
     skills: ['SSH', 'VPN', 'TCP/IP', 'Firewall', 'Hardening'],
   },
   {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="7 8 3 12 7 16"/><polyline points="17 8 21 12 17 16"/><line x1="14" y1="4" x2="10" y2="20"/></svg>`,
-    label: 'Scripting & Programación',
+    label: text.categories.scripting,
     skills: ['Python', 'Bash', 'Shell Scripting', 'YAML'],
   },
   {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.657 3.582 3 8 3s8-1.343 8-3V6"/><path d="M4 12v6c0 1.657 3.582 3 8 3s8-1.343 8-3v-6"/></svg>`,
-    label: 'Bases de Datos',
+    label: text.categories.databases,
     skills: ['PostgreSQL', 'MySQL', 'SQL'],
   },
   {
     svg: `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="18" r="2"/><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><path d="M6 8v8"/><path d="M18 8a8 8 0 01-8 8H9"/></svg>`,
-    label: 'Herramientas & VCS',
-    skills: ['Git', 'GitHub', 'VS Code'],
+    label: text.categories.tooling,
+    skills: ['Git', 'GitHub', 'AI Dev Tools'],
   },
 ];
 ---
 
 <section id="skills" class="section">
   <div class="container">
-    <p class="section-label reveal">Stack Técnico</p>
-    <h2 class="section-title reveal">Herramientas <span class="title-amp">&</span> tecnologías</h2>
-    <p class="skills__sub reveal">Lo que uso, estudio y con lo que construyo.</p>
+    <p class="section-label reveal">{text.sectionLabel}</p>
+    <h2 class="section-title reveal">{text.sectionTitle} <span class="title-amp">&</span> {text.sectionTitleTail}</h2>
+    <p class="skills__sub reveal">{text.sectionSub}</p>
 
     <div class="skills__grid reveal-group">
       {categories.map((cat) => (

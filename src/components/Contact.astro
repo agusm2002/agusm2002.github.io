@@ -1,5 +1,33 @@
 ---
+interface Props {
+  lang?: 'es' | 'en';
+}
+
+const { lang = 'es' } = Astro.props;
+const isEnglish = lang === 'en';
+const baseUrl = import.meta.env.BASE_URL;
+
 const year = new Date().getFullYear();
+
+const text = isEnglish
+  ? {
+      label: 'Contact',
+      title: 'Shall we talk?',
+      description:
+        'I am open to opportunities, collaborations, or simply chatting about infrastructure and technology. Feel free to reach out.',
+      viewCv: 'View my CV',
+      mailNote: 'You can also email me directly.',
+      footerCopy: 'Designed and built by Agustin Monti',
+    }
+  : {
+      label: 'Contacto',
+      title: '¿Hablamos?',
+      description:
+        'Estoy abierto a oportunidades, colaboraciones o simplemente charlar sobre infraestructura y tecnología. No dudes en escribirme.',
+      viewCv: 'Ver mi CV',
+      mailNote: 'También podés escribirme directo por correo.',
+      footerCopy: 'Diseñado y construido por Agustín Monti',
+    };
 ---
 
 <section id="contact" class="section">
@@ -8,17 +36,15 @@ const year = new Date().getFullYear();
       <!-- Glow -->
       <div class="contact__glow" aria-hidden="true"></div>
 
-      <p class="section-label" style="justify-content:center">Contacto</p>
-      <h2 class="contact__title">¿Hablamos?</h2>
+      <p class="section-label" style="justify-content:center">{text.label}</p>
+      <h2 class="contact__title">{text.title}</h2>
       <p class="contact__desc">
-        Estoy abierto a oportunidades, colaboraciones o simplemente
-        charlar sobre infraestructura y tecnología.
-        No dudes en escribirme.
+        {text.description}
       </p>
 
       <div class="contact__links">
         <a
-          href="_CV_Agustin_Monti.pdf"
+          href={`${baseUrl}CV_Agustin_Monti.pdf`}
           target="_blank"
           rel="noopener noreferrer"
           class="btn contact__btn-neutral"
@@ -28,7 +54,7 @@ const year = new Date().getFullYear();
             <path d="m7 10 5 5 5-5"/>
             <path d="M5 21h14"/>
           </svg>
-          Ver mi CV
+          {text.viewCv}
         </a>
         <a
           href="https://github.com/agusm2002"
@@ -64,7 +90,7 @@ const year = new Date().getFullYear();
         </a>
       </div>
 
-      <p class="contact__mail-note">También podés escribirme directo por correo.</p>
+      <p class="contact__mail-note">{text.mailNote}</p>
     </div>
   </div>
 </section>
@@ -75,7 +101,7 @@ const year = new Date().getFullYear();
       <span class="footer__dim">&lt;</span>agusm<span class="footer__green">2002</span><span class="footer__dim"> /&gt;</span>
     </span>
     <span class="footer__copy">
-      Diseñado y construido por Agustín Monti · {year}
+      {text.footerCopy} · {year}
     </span>
     <span class="footer__stack">Astro · Lenis · GSAP</span>
   </div>

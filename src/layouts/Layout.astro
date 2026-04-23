@@ -1,14 +1,23 @@
 ---
 interface Props {
   title?: string;
+  lang?: 'es' | 'en';
+  description?: string;
 }
-const { title = 'Agustín Monti — Portfolio' } = Astro.props;
+const {
+  title = 'Agustin Monti - Portfolio',
+  lang = 'es',
+  description =
+    lang === 'es'
+      ? 'Portfolio de Agustin Monti - Estudiante de Ingenieria en Informatica apasionado por Linux, infraestructura y automatizacion.'
+      : 'Portfolio of Agustin Monti - Computer Engineering student passionate about Linux, infrastructure, and automation.',
+} = Astro.props;
 const baseUrl = import.meta.env.BASE_URL;
 const faviconHref = `${baseUrl}favicon.svg?v=2`;
 ---
 
 <!doctype html>
-<html lang="es">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -17,7 +26,7 @@ const faviconHref = `${baseUrl}favicon.svg?v=2`;
     <meta name="generator" content={Astro.generator} />
     <meta
       name="description"
-      content="Portfolio de Agustín Monti — Estudiante de Ingeniería en Informática apasionado por Linux, infraestructura y automatización."
+      content={description}
     />
     <title>{title}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />

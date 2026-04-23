@@ -1,4 +1,71 @@
 ---
+interface Props {
+  lang?: 'es' | 'en';
+}
+
+const { lang = 'es' } = Astro.props;
+const isEnglish = lang === 'en';
+const baseUrl = import.meta.env.BASE_URL;
+
+const text = isEnglish
+  ? {
+      badge: 'Open to opportunities',
+      viewProjects: 'View projects',
+      viewCv: 'View my CV',
+      descriptionStart: 'Computer Engineering student passionate about',
+      infra: 'infrastructure',
+      conjunction: 'and',
+      automation: 'automation',
+      bridge: 'Building my path toward',
+      focusLead: 'with focus on',
+      continuous: 'continuous software improvement',
+      terminalRole: 'Computer Engineering (student)',
+      terminalLocation: 'Cordoba, Argentina',
+      terminalLanguages: '["Spanish", "English"]',
+      terminalContainer: 'CONTAINER',
+      terminalStatus: 'STATUS',
+      terminalLearning: 'learning',
+      terminalBuilding: 'building',
+      terminalUp: 'Up 4+ years',
+      terminalAlways: 'Always running',
+      scrollLabel: 'scroll',
+      phrases: [
+        'Computer Engineering (student)',
+        'Linux & Infra Enthusiast',
+        'DevOps Apprentice',
+        'Self-hosting Everything',
+        'SRE in the making',
+      ],
+    }
+  : {
+      badge: 'Abierto a oportunidades',
+      viewProjects: 'Ver proyectos',
+      viewCv: 'Ver mi CV',
+      descriptionStart: 'Estudiante de Ingeniería en Informática apasionado por',
+      infra: 'infraestructura',
+      conjunction: 'y',
+      automation: 'automatización',
+      bridge: 'Construyendo mi camino hacia',
+      focusLead: 'con foco en la',
+      continuous: 'mejora continua del software',
+      terminalRole: 'Ing. Informatica (estudiante)',
+      terminalLocation: 'Cordoba, Argentina',
+      terminalLanguages: '["Español", "Inglés"]',
+      terminalContainer: 'CONTENEDOR',
+      terminalStatus: 'ESTADO',
+      terminalLearning: 'aprendiendo',
+      terminalBuilding: 'construyendo',
+      terminalUp: 'Activo hace 4+ años',
+      terminalAlways: 'Siempre en ejecución',
+      scrollLabel: 'desplazar',
+      phrases: [
+        'Ing. Informática (estudiante)',
+        'Entusiasta de Linux e Infra',
+        'Aprendiz de DevOps',
+        'Self-hosting de todo',
+        'SRE en construcción',
+      ],
+    };
 ---
 
 <section id="hero" class="hero">
@@ -8,46 +75,39 @@
     <div class="hero__text">
       <div class="hero__badge" data-hero="badge">
         <span class="hero__pulse"></span>
-        Abierto a oportunidades
+        {text.badge}
       </div>
 
       <h1 class="hero__name" data-hero="name">
-        Agustín<br /><span class="hero__name-green">Monti</span>
+        Agustin<br /><span class="hero__name-green">Monti</span>
       </h1>
 
       <p class="hero__role" data-hero="role">
-        <span class="hero__comment">// </span><span id="typewriter" aria-live="polite"></span><span class="hero__cursor">|</span>
+        <span class="hero__comment">// </span><span id="typewriter" data-phrases={JSON.stringify(text.phrases)} aria-live="polite"></span><span class="hero__cursor">|</span>
       </p>
 
       <p class="hero__desc" data-hero="desc">
-
-  Estudiante de Ingeniería en Informática apasionado por
-
-  <span class="hl">Linux</span>, <span class="hl">infraestructura</span> y
-
-  <span class="hl">automatización</span>. Construyendo mi camino hacia
-
-  <span class="hl">DevOps</span>, con foco en la
-
-  <span class="hl">mejora continua del software</span>.
-
-</p>
-
+        {text.descriptionStart}
+        <span class="hl">Linux</span>, <span class="hl">{text.infra}</span> {text.conjunction}
+        <span class="hl">{text.automation}</span>. {text.bridge}
+        <span class="hl">DevOps</span>, {text.focusLead}
+        <span class="hl">{text.continuous}</span>.
+      </p>
 
       <div class="hero__ctas" data-hero="ctas">
         <a href="#projects" class="btn btn-primary">
-          Ver proyectos
+          {text.viewProjects}
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
             <path d="M5 12h14M12 5l7 7-7 7"/>
           </svg>
         </a>
-        <a href="/_CV_Agustin_Monti.pdf" class="btn btn-outline" target="_blank" rel="noopener noreferrer">
+        <a href={`${baseUrl}CV_Agustin_Monti.pdf`} class="btn btn-outline" target="_blank" rel="noopener noreferrer">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path d="M12 3v12"/>
             <path d="m7 10 5 5 5-5"/>
             <path d="M5 21h14"/>
           </svg>
-          Ver mi CV
+          {text.viewCv}
         </a>
         <a href="https://github.com/agusm2002" target="_blank" rel="noopener noreferrer" class="btn btn-outline">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -84,10 +144,10 @@
             <span class="t-cmd"> cat about.yaml</span>
           </div>
           <div class="t-out t-kv">
-            <span class="t-key">role</span><span class="t-sep">:</span><span class="t-val">"Ing. Informática (student)"</span>
+            <span class="t-key">role</span><span class="t-sep">:</span><span class="t-val">"{text.terminalRole}"</span>
             <span class="t-key">focus</span><span class="t-sep">:</span><span class="t-val">"Linux · Infra · DevOps"</span>
-            <span class="t-key">location</span><span class="t-sep">:</span><span class="t-val">"Córdoba, Argentina 🇦🇷"</span>
-            <span class="t-key">languages</span><span class="t-sep">:</span><span class="t-val">["Español", "Inglés"]</span>
+            <span class="t-key">location</span><span class="t-sep">:</span><span class="t-val">"{text.terminalLocation}"</span>
+            <span class="t-key">languages</span><span class="t-sep">:</span><span class="t-val">{text.terminalLanguages}</span>
             <span class="t-key">goal</span><span class="t-sep">:</span><span class="t-val">"SRE / DevOps"</span>
           </div>
 
@@ -98,13 +158,13 @@
           </div>
           <div class="t-out">
             <div class="t-table-head">
-              <span>CONTAINER</span><span>STATUS</span>
+              <span>{text.terminalContainer}</span><span>{text.terminalStatus}</span>
             </div>
             <div class="t-table-row">
-              <span>learning</span><span class="t-status">Up 4+ years</span>
+              <span>{text.terminalLearning}</span><span class="t-status">{text.terminalUp}</span>
             </div>
             <div class="t-table-row">
-              <span>building</span><span class="t-status">Always running</span>
+              <span>{text.terminalBuilding}</span><span class="t-status">{text.terminalAlways}</span>
             </div>
           </div>
 
@@ -123,7 +183,7 @@
 
   <!-- Scroll indicator -->
   <div class="hero__scroll" data-hero="scroll" aria-hidden="true">
-    <span class="hero__scroll-label">scroll</span>
+    <span class="hero__scroll-label">{text.scrollLabel}</span>
     <div class="hero__scroll-bar"></div>
   </div>
 </section>
@@ -328,55 +388,57 @@
     .from('[data-hero="terminal"]', { opacity: 0, x: 36, duration: 0.75, ease: 'power3.out' }, '-=0.55')
     .from('[data-hero="scroll"]',   { opacity: 0, duration: 0.4 }, '-=0.1');
 
-  /* ── Typewriter ── */
-  const phrases = [
-    'Ing. Informática (estudiante)',
-    'Linux & Infra Enthusiast',
-    'DevOps Apprentice',
-    'Self-hosting Everything',
-    'SRE in the making',
-  ];
-
   const el = document.getElementById('typewriter');
   if (el) {
-    let phraseIdx = 0;
-    let charIdx   = 0;
-    let deleting  = false;
-    let paused    = false;
+    const phrasesData = el.getAttribute('data-phrases');
+    const phrases = phrasesData ? JSON.parse(phrasesData) : [];
 
-    const TYPING_SPEED  = 65;
-    const DELETE_SPEED  = 35;
-    const PAUSE_AFTER   = 1800;
-    const PAUSE_BEFORE  = 350;
+    if (phrases.length) {
+      let phraseIdx = 0;
+      let charIdx = 0;
+      let deleting = false;
+      let paused = false;
 
-    function tick() {
-      if (paused) return;
-      const phrase = phrases[phraseIdx];
+      const TYPING_SPEED = 65;
+      const DELETE_SPEED = 35;
+      const PAUSE_AFTER = 1800;
+      const PAUSE_BEFORE = 350;
 
-      if (!deleting) {
-        el.textContent = phrase.slice(0, charIdx + 1);
-        charIdx++;
-        if (charIdx === phrase.length) {
-          paused = true;
-          setTimeout(() => { deleting = true; paused = false; tick(); }, PAUSE_AFTER);
-          return;
+      function tick() {
+        if (paused) return;
+        const phrase = phrases[phraseIdx];
+
+        if (!deleting) {
+          el.textContent = phrase.slice(0, charIdx + 1);
+          charIdx++;
+          if (charIdx === phrase.length) {
+            paused = true;
+            setTimeout(() => {
+              deleting = true;
+              paused = false;
+              tick();
+            }, PAUSE_AFTER);
+            return;
+          }
+          setTimeout(tick, TYPING_SPEED);
+        } else {
+          el.textContent = phrase.slice(0, charIdx - 1);
+          charIdx--;
+          if (charIdx === 0) {
+            deleting = false;
+            phraseIdx = (phraseIdx + 1) % phrases.length;
+            paused = true;
+            setTimeout(() => {
+              paused = false;
+              tick();
+            }, PAUSE_BEFORE);
+            return;
+          }
+          setTimeout(tick, DELETE_SPEED);
         }
-        setTimeout(tick, TYPING_SPEED);
-      } else {
-        el.textContent = phrase.slice(0, charIdx - 1);
-        charIdx--;
-        if (charIdx === 0) {
-          deleting = false;
-          phraseIdx = (phraseIdx + 1) % phrases.length;
-          paused = true;
-          setTimeout(() => { paused = false; tick(); }, PAUSE_BEFORE);
-          return;
-        }
-        setTimeout(tick, DELETE_SPEED);
       }
-    }
 
-    // Start after hero animation settles
-    setTimeout(tick, 1400);
+      setTimeout(tick, 1400);
+    }
   }
 </script>

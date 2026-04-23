@@ -1,31 +1,90 @@
 ---
+interface Props {
+  lang?: 'es' | 'en';
+}
+
+const { lang = 'es' } = Astro.props;
+const isEnglish = lang === 'en';
+const baseUrl = import.meta.env.BASE_URL;
+const currentBase = isEnglish ? `${baseUrl}en` : baseUrl;
+
+const text = isEnglish
+  ? {
+      navAriaLabel: 'Primary navigation',
+      about: 'About',
+      skills: 'Skills',
+      projects: 'Projects',
+      contact: 'Contact',
+      githubAriaLabel: 'Agustin Monti GitHub profile',
+      github: 'GitHub',
+      languageSelectorLabel: 'Language selector',
+      es: 'ES',
+      en: 'EN',
+      esAriaLabel: 'Switch to Spanish',
+      enAriaLabel: 'Switch to English',
+    }
+  : {
+      navAriaLabel: 'Navegación principal',
+      about: 'Sobre mí',
+      skills: 'Skills',
+      projects: 'Proyectos',
+      contact: 'Contacto',
+      githubAriaLabel: 'GitHub de Agustin Monti',
+      github: 'GitHub',
+      languageSelectorLabel: 'Selector de idioma',
+      es: 'ES',
+      en: 'EN',
+      esAriaLabel: 'Cambiar a español',
+      enAriaLabel: 'Cambiar a inglés',
+    };
 ---
 
-<nav class="nav" aria-label="Navegación principal">
+<nav class="nav" aria-label={text.navAriaLabel}>
   <div class="nav__pill">
-    <a href="#hero" class="nav__logo">
+    <a href={`${currentBase}#hero`} class="nav__logo">
       <span class="nav__dim">&lt;</span>agusm<span class="nav__accent">2002</span><span class="nav__dim"> /&gt;</span>
     </a>
 
     <ul class="nav__links" role="list">
-      <li><a href="#about"    class="nav__link">Sobre mí</a></li>
-      <li><a href="#skills"   class="nav__link">Skills</a></li>
-      <li><a href="#projects" class="nav__link">Proyectos</a></li>
-      <li><a href="#contact"  class="nav__link">Contacto</a></li>
+      <li><a href={`${currentBase}#about`} class="nav__link">{text.about}</a></li>
+      <li><a href={`${currentBase}#skills`} class="nav__link">{text.skills}</a></li>
+      <li><a href={`${currentBase}#projects`} class="nav__link">{text.projects}</a></li>
+      <li><a href={`${currentBase}#contact`} class="nav__link">{text.contact}</a></li>
     </ul>
 
-    <a
-      href="https://github.com/agusm2002"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="nav__gh"
-      aria-label="GitHub de Agustín Monti"
-    >
+    <div class="nav__right">
+      <div class="nav__lang" role="group" aria-label={text.languageSelectorLabel}>
+        <a
+          href={baseUrl}
+          class={`nav__lang-btn ${!isEnglish ? 'is-active' : ''}`}
+          aria-current={!isEnglish ? 'page' : undefined}
+          aria-label={text.esAriaLabel}
+        >
+          {text.es}
+        </a>
+        <a
+          href={`${baseUrl}en`}
+          class={`nav__lang-btn ${isEnglish ? 'is-active' : ''}`}
+          aria-current={isEnglish ? 'page' : undefined}
+          aria-label={text.enAriaLabel}
+        >
+          {text.en}
+        </a>
+      </div>
+
+      <a
+        href="https://github.com/agusm2002"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="nav__gh"
+        aria-label={text.githubAriaLabel}
+      >
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
       </svg>
-      GitHub
-    </a>
+        {text.github}
+      </a>
+    </div>
   </div>
 </nav>
 
@@ -46,7 +105,10 @@
   .nav__pill {
     pointer-events: all;
     width: 100%; max-width: 900px;
-    display: flex; align-items: center; justify-content: space-between; gap: 2rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1.5rem;
     background: rgba(6, 14, 9, 0.68);
     backdrop-filter: blur(22px) saturate(160%);
     -webkit-backdrop-filter: blur(22px) saturate(160%);
@@ -76,7 +138,15 @@
 
   /* ── Links ── */
   .nav__links {
-    display: flex; align-items: center; gap: 1.5rem; list-style: none;
+    display: flex; align-items: center; justify-content: center; gap: 1.5rem; list-style: none;
+  }
+
+  /* ── Right group (lang selector + GitHub) ── */
+  .nav__right {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    justify-self: end;
   }
 
   .nav__link {
@@ -93,6 +163,42 @@
 
   .nav__link:hover            { color: var(--green-300); }
   .nav__link:hover::after     { width: 100%; }
+
+  /* ── Language selector ── */
+  .nav__lang {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.2rem;
+    border-radius: 999px;
+    border: 1px solid rgba(34, 197, 94, 0.16);
+    background: rgba(34, 197, 94, 0.05);
+  }
+
+  .nav__lang-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 1.6rem;
+    padding-inline: 0.45rem;
+    border-radius: 999px;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: color 0.18s, background 0.18s, border-color 0.18s;
+  }
+
+  .nav__lang-btn:hover {
+    color: var(--green-300);
+  }
+
+  .nav__lang-btn.is-active {
+    color: var(--green-100);
+    background: rgba(34, 197, 94, 0.24);
+    border: 1px solid rgba(34, 197, 94, 0.35);
+  }
 
   /* ── GitHub button ── */
   .nav__gh {
@@ -114,9 +220,13 @@
 
   @media (max-width: 680px) {
     .nav__links { display: none; }
-    .nav__pill  { padding: 0.5rem 1rem; }
+    .nav__pill  { grid-template-columns: auto 1fr; padding: 0.5rem 1rem; }
   }
   @media (max-width: 420px) {
     .nav__gh  { display: none; }
+    .nav__lang-btn {
+      min-width: 1.85rem;
+      padding-inline: 0.35rem;
+    }
   }
 </style>
