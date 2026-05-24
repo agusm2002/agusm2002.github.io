@@ -28,8 +28,13 @@ const faviconHref = `${baseUrl}favicon.svg?v=2`;
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
+            rel="preload"
+            as="style"
             href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap"
+        />
+        <link
             rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap"
         />
     </head>
     <body>
@@ -84,6 +89,16 @@ const faviconHref = `${baseUrl}favicon.svg?v=2`;
         --font-display: "Space Grotesk", system-ui, sans-serif;
         --font-body: "Inter", system-ui, sans-serif;
         --font-mono: "JetBrains Mono", "Fira Code", monospace;
+        /* ── Type Scale (Major Second, 1.125 ratio) ── */
+        --text-2xs: 0.625rem; /* 10px – micro labels */
+        --text-xs: 0.6875rem; /* 11px – tiny code/text */
+        --text-sm: 0.75rem; /* 12px – labels, tags, mono */
+        --text-base: 0.875rem; /* 14px – body UI, buttons */
+        --text-md: 0.9375rem; /* 15px – prose, descriptions */
+        --text-lg: 1rem; /* 16px – default */
+        --text-xl: 1.125rem; /* 18px – subtitles */
+        --text-2xl: 1.25rem; /* 20px – card titles */
+        --text-3xl: 1.5rem; /* 24px – stats */
         --mouse-x: -500px;
         --mouse-y: -500px;
     }
@@ -459,7 +474,7 @@ const faviconHref = `${baseUrl}favicon.svg?v=2`;
     /* ── Typography ──────────────────────────────────── */
     .section-label {
         font-family: var(--font-mono);
-        font-size: 0.72rem;
+        font-size: var(--text-sm);
         color: var(--green-500);
         letter-spacing: 0.18em;
         text-transform: uppercase;
@@ -492,7 +507,7 @@ const faviconHref = `${baseUrl}favicon.svg?v=2`;
         padding: 0.75rem 1.5rem;
         border-radius: 0.5rem;
         font-family: var(--font-display);
-        font-size: 0.875rem;
+        font-size: var(--text-base);
         font-weight: 500;
         cursor: pointer;
         transition: all 0.2s ease;

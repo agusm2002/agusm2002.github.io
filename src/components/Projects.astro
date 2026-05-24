@@ -610,27 +610,57 @@ const features = [
                 <!-- Right: app screenshots fan -->
                 <div class="mini-card__visual" aria-hidden="true">
                     <div class="screens-fan">
-                        <img
-                            src={`${baseUrl}screenshots/chrono-comic.png?v=20260422`}
-                            alt={text.chronoAltComic}
-                            class="fan-shot fan-shot--back"
-                            loading="eager"
-                            decoding="async"
-                        />
-                        <img
-                            src={`${baseUrl}screenshots/chrono-audio.png?v=20260422`}
-                            alt={text.chronoAltAudio}
-                            class="fan-shot fan-shot--mid"
-                            loading="eager"
-                            decoding="async"
-                        />
-                        <img
-                            src={`${baseUrl}screenshots/chrono-library.png?v=20260422`}
-                            alt={text.chronoAltLibrary}
-                            class="fan-shot fan-shot--front"
-                            loading="eager"
-                            decoding="async"
-                        />
+                        <picture>
+                            <source
+                                type="image/avif"
+                                srcset={`${baseUrl}screenshots/chrono-comic.avif?v=20260422`}
+                            />
+                            <source
+                                type="image/webp"
+                                srcset={`${baseUrl}screenshots/chrono-comic.webp?v=20260422`}
+                            />
+                            <img
+                                src={`${baseUrl}screenshots/chrono-comic.png?v=20260422`}
+                                alt={text.chronoAltComic}
+                                class="fan-shot fan-shot--back"
+                                loading="eager"
+                                decoding="async"
+                            />
+                        </picture>
+                        <picture>
+                            <source
+                                type="image/avif"
+                                srcset={`${baseUrl}screenshots/chrono-audio.avif?v=20260422`}
+                            />
+                            <source
+                                type="image/webp"
+                                srcset={`${baseUrl}screenshots/chrono-audio.webp?v=20260422`}
+                            />
+                            <img
+                                src={`${baseUrl}screenshots/chrono-audio.png?v=20260422`}
+                                alt={text.chronoAltAudio}
+                                class="fan-shot fan-shot--mid"
+                                loading="eager"
+                                decoding="async"
+                            />
+                        </picture>
+                        <picture>
+                            <source
+                                type="image/avif"
+                                srcset={`${baseUrl}screenshots/chrono-library.avif?v=20260422`}
+                            />
+                            <source
+                                type="image/webp"
+                                srcset={`${baseUrl}screenshots/chrono-library.webp?v=20260422`}
+                            />
+                            <img
+                                src={`${baseUrl}screenshots/chrono-library.png?v=20260422`}
+                                alt={text.chronoAltLibrary}
+                                class="fan-shot fan-shot--front"
+                                loading="eager"
+                                decoding="async"
+                            />
+                        </picture>
                     </div>
                 </div>
             </article>
@@ -641,7 +671,7 @@ const features = [
 <style>
     .proj__sub {
         color: var(--text-muted);
-        font-size: 0.9375rem;
+        font-size: var(--text-md);
         max-width: 52ch;
         margin-bottom: 2.5rem;
     }
@@ -677,7 +707,7 @@ const features = [
         align-items: center;
         gap: 0.4rem;
         font-family: var(--font-mono);
-        font-size: 0.68rem;
+        font-size: var(--text-xs);
         color: var(--green-400);
         background: rgba(34, 197, 94, 0.1);
         border: 1px solid rgba(34, 197, 94, 0.22);
@@ -692,7 +722,7 @@ const features = [
         align-items: center;
         gap: 0.4rem;
         font-family: var(--font-mono);
-        font-size: 0.8rem;
+        font-size: var(--text-sm);
         color: var(--text-muted);
         transition:
             color 0.18s,
@@ -734,7 +764,7 @@ const features = [
 
     .proj-card__desc {
         color: var(--text-muted);
-        font-size: 0.9375rem;
+        font-size: var(--text-md);
         line-height: 1.75;
         margin-bottom: 1.5rem;
     }
@@ -751,7 +781,7 @@ const features = [
         align-items: center;
         gap: 0.5rem;
         font-family: var(--font-mono);
-        font-size: 0.78rem;
+        font-size: var(--text-sm);
         color: var(--green-400);
         background: rgba(34, 197, 94, 0.06);
         border: 1px dashed rgba(34, 197, 94, 0.28);
@@ -775,7 +805,7 @@ const features = [
         display: flex;
         align-items: flex-start;
         gap: 0.65rem;
-        font-size: 0.875rem;
+        font-size: var(--text-base);
         color: var(--text-muted);
         line-height: 1.5;
     }
@@ -804,7 +834,7 @@ const features = [
         align-items: center;
         gap: 0.35rem;
         font-family: var(--font-mono);
-        font-size: 0.72rem;
+        font-size: var(--text-sm);
         color: var(--text-muted);
         background: rgba(34, 197, 94, 0.04);
         border: 1px solid rgba(34, 197, 94, 0.1);
@@ -835,7 +865,7 @@ const features = [
 
     .arch-label {
         font-family: var(--font-mono);
-        font-size: 0.65rem;
+        font-size: var(--text-2xs);
         color: var(--text-dim);
         letter-spacing: 0.16em;
         text-transform: uppercase;
@@ -865,7 +895,7 @@ const features = [
 
     .arch-node {
         font-family: var(--font-mono);
-        font-size: 0.72rem;
+        font-size: var(--text-sm);
         color: var(--text-muted);
         background: rgba(34, 197, 94, 0.06);
         border: 1px solid rgba(34, 197, 94, 0.16);
@@ -900,7 +930,7 @@ const features = [
         font-weight: 500;
     }
     .arch-node--sm {
-        font-size: 0.68rem;
+        font-size: var(--text-xs);
         padding: 0.3rem 0.65rem;
     }
     .arch-node--nginx {
@@ -911,7 +941,7 @@ const features = [
         border-color: rgba(34, 197, 94, 0.28);
     }
     .arch-node--app {
-        font-size: 0.68rem;
+        font-size: var(--text-xs);
         padding: 0.35rem 0.75rem;
         flex-direction: column;
         align-items: flex-start;
@@ -924,12 +954,12 @@ const features = [
         display: flex;
         flex-direction: column;
         gap: 0.15rem;
-        font-size: 0.68rem;
+        font-size: var(--text-xs);
         color: var(--text-muted);
         font-weight: 500;
     }
     .arch-app-stack {
-        font-size: 0.6rem;
+        font-size: var(--text-2xs);
         color: var(--green-700);
         font-weight: 400;
         letter-spacing: 0.01em;
@@ -939,12 +969,12 @@ const features = [
     }
     .arch-node--sec {
         color: var(--text-muted);
-        font-size: 0.68rem;
+        font-size: var(--text-xs);
         padding: 0.3rem 0.65rem;
     }
     .arch-node--mon {
         color: var(--text-muted);
-        font-size: 0.68rem;
+        font-size: var(--text-xs);
         padding: 0.3rem 0.65rem;
     }
 
@@ -1015,14 +1045,14 @@ const features = [
     }
 
     .other-projs__title {
-        font-size: 1.1rem;
+        font-size: var(--text-xl);
         font-weight: 600;
         color: var(--green-50);
         margin-bottom: 0.4rem;
     }
 
     .other-projs__sub {
-        font-size: 0.9rem;
+        font-size: var(--text-md);
         color: var(--text-muted);
         max-width: 62ch;
         line-height: 1.6;
@@ -1075,7 +1105,7 @@ const features = [
         align-items: center;
         gap: 0.35rem;
         font-family: var(--font-mono);
-        font-size: 0.68rem;
+        font-size: var(--text-xs);
         color: rgba(96, 165, 250, 0.9);
         background: rgba(96, 165, 250, 0.08);
         border: 1px solid rgba(96, 165, 250, 0.2);
@@ -1090,7 +1120,7 @@ const features = [
         align-items: center;
         gap: 0.35rem;
         font-family: var(--font-mono);
-        font-size: 0.78rem;
+        font-size: var(--text-sm);
         color: var(--text-dim);
         transition:
             color 0.18s,
@@ -1103,7 +1133,7 @@ const features = [
     }
 
     .mini-card__title {
-        font-size: 1.25rem;
+        font-size: var(--text-2xl);
         font-weight: 700;
         color: var(--green-50);
         margin-bottom: 0.65rem;
@@ -1111,7 +1141,7 @@ const features = [
     }
 
     .mini-card__desc {
-        font-size: 0.9rem;
+        font-size: var(--text-md);
         color: var(--text-muted);
         line-height: 1.7;
         margin-bottom: 1.1rem;
@@ -1136,7 +1166,7 @@ const features = [
         display: flex;
         align-items: flex-start;
         gap: 0.55rem;
-        font-size: 0.845rem;
+        font-size: var(--text-base);
         color: var(--text-muted);
         line-height: 1.5;
     }
@@ -1160,7 +1190,7 @@ const features = [
         align-items: center;
         gap: 0.35rem;
         font-family: var(--font-mono);
-        font-size: 0.7rem;
+        font-size: var(--text-sm);
         color: var(--text-dim);
         background: rgba(96, 165, 250, 0.04);
         border: 1px solid rgba(96, 165, 250, 0.12);
@@ -1182,7 +1212,7 @@ const features = [
         align-items: center;
         gap: 0.5rem;
         font-family: var(--font-mono);
-        font-size: 0.82rem;
+        font-size: var(--text-base);
         font-weight: 500;
         padding: 0.55rem 1.1rem;
         border-radius: 0.5rem;
