@@ -17,7 +17,7 @@ const text = isEnglish
               "I am open to opportunities, collaborations, or simply chatting about infrastructure and technology. Feel free to reach out.",
           viewCv: "View my CV",
           mailNote: "You can also email me directly.",
-          footerCopy: "Designed and built by Agustin Monti",
+          footerCopy: "Designed and built by Agustín Monti",
       }
     : {
           label: "Contacto",
@@ -32,10 +32,12 @@ const text = isEnglish
 
 <section id="contact" class="section">
     <div class="container">
-        <div class="contact__card reveal">
-            <!-- Glow -->
-            <div class="contact__glow" aria-hidden="true"></div>
-
+        <div
+            class="contact__card metal-border reveal"
+            data-tilt
+            data-tilt-max="1.5"
+            style="--metal-delay: -5s; --metal-duration: 28s;"
+        >
             <p class="section-label" style="justify-content:center">
                 {text.label}
             </p>
@@ -49,7 +51,8 @@ const text = isEnglish
                     href={`${baseUrl}CV_Agustin_Monti.pdf`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="btn contact__btn-neutral"
+                    class="btn contact__btn-neutral metal-border"
+                    style="--metal-delay: -10s; --metal-duration: 25s;"
                 >
                     <svg
                         width="15"
@@ -70,7 +73,8 @@ const text = isEnglish
                     href="https://github.com/agusm2002"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="btn contact__btn-neutral"
+                    class="btn contact__btn-neutral metal-border"
+                    style="--metal-delay: -10s; --metal-duration: 25s;"
                 >
                     <svg
                         width="15"
@@ -89,7 +93,8 @@ const text = isEnglish
                     href="https://www.linkedin.com/in/agustin-monti-a23513253/?skipRedirect=true"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="btn contact__btn-neutral"
+                    class="btn contact__btn-neutral metal-border"
+                    style="--metal-delay: -10s; --metal-duration: 25s;"
                 >
                     <svg
                         width="15"
@@ -106,7 +111,8 @@ const text = isEnglish
                 </a>
                 <a
                     href="mailto:agustinmonti2002@gmail.com"
-                    class="btn contact__btn-neutral"
+                    class="btn contact__btn-neutral metal-border"
+                    style="--metal-delay: -10s; --metal-duration: 25s;"
                 >
                     <svg
                         width="15"
@@ -150,33 +156,15 @@ const text = isEnglish
         overflow: hidden;
         max-width: 640px;
         margin-inline: auto;
-        background: var(--surface);
-        border: 1px solid var(--border);
+        background: #0e0e0e;
+        border: none;
         border-radius: 1.25rem;
         padding: 3.5rem 2.5rem;
         text-align: center;
-        transition: border-color 0.25s;
     }
 
     .contact__card:hover {
-        border-color: var(--border-hover);
-    }
-
-    .contact__glow {
-        position: absolute;
-        inset: -60px;
-        z-index: 0;
-        background: radial-gradient(
-            circle at 50% 50%,
-            rgba(34, 197, 94, 0.08),
-            transparent 65%
-        );
-        pointer-events: none;
-    }
-
-    .contact__card > :not(.contact__glow) {
-        position: relative;
-        z-index: 1;
+        background: #121212;
     }
 
     .contact__title {
@@ -209,16 +197,20 @@ const text = isEnglish
     }
 
     .contact__btn-neutral {
-        background: rgba(8, 15, 10, 0.55);
+        overflow: hidden;
+        border-radius: 0.5rem;
+        background: #0e0e0e;
         color: var(--text-muted);
-        border-color: var(--border);
+        border: none;
+        transition:
+            background 0.2s,
+            color 0.2s,
+            transform 0.2s;
     }
 
     .contact__btn-neutral:hover {
-        background: rgba(26, 38, 30, 0.7);
-        color: var(--text);
-        border-color: var(--border-hover);
-        box-shadow: none;
+        background: #161616;
+        color: var(--green-100);
         transform: translateY(-1px);
     }
 

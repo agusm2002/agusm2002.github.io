@@ -92,7 +92,11 @@ const categories: Category[] = [
         <div class="skills__grid reveal-group">
             {
                 categories.map((cat) => (
-                    <div class="skill-card reveal-item">
+                    <div
+                        class="skill-card metal-border reveal-item"
+                        data-tilt
+                        style="--metal-delay: -4s; --metal-duration: 30s;"
+                    >
                         <div class="skill-card__head">
                             <span class="skill-card__icon">
                                 <Fragment set:html={cat.svg} />
@@ -101,7 +105,10 @@ const categories: Category[] = [
                         </div>
                         <div class="skill-card__pills">
                             {cat.skills.map((s) => (
-                                <span class="spill">
+                                <span
+                                    class="spill metal-border-subtle"
+                                    style="--metal-delay: -9s; --metal-duration: 22s;"
+                                >
                                     {techIcons[s] && (
                                         <Fragment set:html={techIcons[s]} />
                                     )}
@@ -131,22 +138,21 @@ const categories: Category[] = [
     .skills__grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 1px;
-        background: var(--border);
-        border: 1px solid var(--border);
-        border-radius: 0.875rem;
-        overflow: hidden;
+        gap: 0.75rem;
     }
 
     .skill-card {
-        background: var(--bg);
+        background: #0e0e0e;
+        border: none;
         padding: 1.625rem;
+        overflow: hidden;
+        border-radius: 0.875rem;
         transition: background 0.22s;
         cursor: default;
     }
 
     .skill-card:hover {
-        background: var(--surface);
+        background: #111;
     }
 
     .skill-card__head {
@@ -164,9 +170,9 @@ const categories: Category[] = [
         height: 2.25rem;
         flex-shrink: 0;
         border-radius: 0.5rem;
-        background: rgba(34, 197, 94, 0.07);
-        border: 1px solid rgba(34, 197, 94, 0.14);
-        color: var(--green-500);
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--green-400);
         transition:
             background 0.2s,
             border-color 0.2s,
@@ -174,9 +180,9 @@ const categories: Category[] = [
     }
 
     .skill-card:hover .skill-card__icon {
-        background: rgba(34, 197, 94, 0.12);
-        border-color: rgba(34, 197, 94, 0.26);
-        color: var(--green-400);
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.16);
+        color: var(--green-300);
     }
 
     .skill-card__title {
@@ -204,22 +210,18 @@ const categories: Category[] = [
         letter-spacing: 0.01em;
         color: var(--text-muted);
         background: transparent;
-        border: 1px solid rgba(34, 197, 94, 0.1);
+        border: none;
         padding: 0.275rem 0.65rem;
         border-radius: 0.3rem;
         transition:
             color 0.15s,
-            border-color 0.15s,
-            background 0.15s,
-            box-shadow 0.15s;
+            background 0.15s;
         position: relative;
     }
 
     .skill-card:hover .spill:hover {
         color: var(--green-300);
-        border-color: rgba(34, 197, 94, 0.3);
-        background: rgba(34, 197, 94, 0.06);
-        box-shadow: 0 0 10px rgba(34, 197, 94, 0.07);
+        background: rgba(255, 255, 255, 0.04);
     }
 
     @media (max-width: 900px) {

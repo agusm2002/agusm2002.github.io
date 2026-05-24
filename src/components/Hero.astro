@@ -69,13 +69,17 @@ const text = isEnglish
     <div class="container hero__inner">
         <!-- Left: copy -->
         <div class="hero__text">
-            <div class="hero__badge" data-hero="badge">
+            <div
+                class="hero__badge metal-border-subtle"
+                style="--metal-delay: -3s; --metal-duration: 24s;"
+                data-hero="badge"
+            >
                 <span class="hero__pulse"></span>
                 {text.badge}
             </div>
 
             <h1 class="hero__name" data-hero="name">
-                Agustin<br /><span class="hero__name-green">Monti</span>
+                Agustín<br /><span class="hero__name-green">Monti</span>
             </h1>
 
             <p class="hero__role" data-hero="role">
@@ -98,7 +102,11 @@ const text = isEnglish
             </p>
 
             <div class="hero__ctas" data-hero="ctas">
-                <a href="#projects" class="btn btn-primary">
+                <a
+                    href="#projects"
+                    class="btn btn-primary metal-border"
+                    style="--metal-delay: -7s; --metal-duration: 28s;"
+                >
                     {text.viewProjects}
                     <svg
                         width="15"
@@ -116,7 +124,8 @@ const text = isEnglish
                     href="https://github.com/agusm2002"
                     target="_blank"
                     rel="noopener noreferrer"
-                    class="btn btn-outline"
+                    class="btn btn-outline metal-border"
+                    style="--metal-delay: -11s; --metal-duration: 30s;"
                 >
                     <svg
                         width="15"
@@ -136,7 +145,11 @@ const text = isEnglish
 
         <!-- Right: terminal -->
         <div class="hero__terminal-wrap" data-hero="terminal">
-            <div class="terminal" role="presentation">
+            <div
+                class="terminal metal-border"
+                style="--metal-delay: -15s; --metal-duration: 32s;"
+                role="presentation"
+            >
                 <div class="terminal__bar">
                     <div class="terminal__dots">
                         <span style="background:#ff5f57"></span>
@@ -207,9 +220,6 @@ const text = isEnglish
                     </div>
                 </div>
             </div>
-
-            <!-- Floating glow behind terminal -->
-            <div class="terminal__glow" aria-hidden="true"></div>
         </div>
     </div>
 
@@ -256,9 +266,9 @@ const text = isEnglish
         gap: 0.5rem;
         font-family: var(--font-mono);
         font-size: var(--text-sm);
-        color: var(--green-400);
-        background: rgba(34, 197, 94, 0.07);
-        border: 1px solid rgba(34, 197, 94, 0.18);
+        color: var(--green-300);
+        background: rgba(14, 14, 14, 0.8);
+        border: none;
         padding: 0.35rem 0.875rem;
         border-radius: 999px;
         margin-bottom: 1.5rem;
@@ -269,7 +279,7 @@ const text = isEnglish
         width: 6px;
         height: 6px;
         border-radius: 50%;
-        background: var(--green-500);
+        background: #22c55e;
         flex-shrink: 0;
         animation: pulse 2.2s ease-in-out infinite;
     }
@@ -328,32 +338,23 @@ const text = isEnglish
         flex-wrap: wrap;
     }
 
+    .btn-primary {
+        overflow: hidden;
+    }
+
+    .btn-outline {
+        border-color: transparent;
+        overflow: hidden;
+    }
+
     /* ── Terminal ── */
-    .hero__terminal-wrap {
-        position: relative;
-    }
-
-    .terminal__glow {
-        position: absolute;
-        inset: -40px;
-        z-index: -1;
-        background: radial-gradient(
-            circle at 50% 50%,
-            rgba(34, 197, 94, 0.07),
-            transparent 70%
-        );
-        filter: blur(20px);
-    }
-
     .terminal {
-        background: rgba(8, 18, 11, 0.75);
-        border: 1px solid var(--border);
+        background: #0e0e0e;
+        border: none;
         border-radius: 0.875rem;
         overflow: hidden;
         backdrop-filter: blur(14px);
-        box-shadow:
-            0 32px 80px rgba(0, 0, 0, 0.55),
-            0 0 0 1px rgba(34, 197, 94, 0.05);
+        box-shadow: none;
     }
 
     .terminal__bar {
@@ -361,7 +362,7 @@ const text = isEnglish
         align-items: center;
         gap: 0.75rem;
         padding: 0.875rem 1.25rem;
-        background: rgba(4, 10, 6, 0.5);
+        background: rgba(10, 10, 10, 0.5);
         border-bottom: 1px solid var(--border);
     }
 
@@ -494,7 +495,7 @@ const text = isEnglish
     .hero__scroll-bar {
         width: 2px;
         height: 4.5rem;
-        background: linear-gradient(to bottom, var(--green-600), transparent);
+        background: linear-gradient(to bottom, #555, transparent);
         animation: scroll-bar 2.2s ease-in-out infinite;
     }
 
@@ -525,6 +526,13 @@ const text = isEnglish
         .hero__inner {
             grid-template-columns: 1fr;
             gap: 2.5rem;
+        }
+        .hero__scroll {
+            position: relative;
+            bottom: auto;
+            left: auto;
+            transform: none;
+            margin-top: 2rem;
         }
     }
 

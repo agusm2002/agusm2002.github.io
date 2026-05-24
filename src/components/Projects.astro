@@ -123,10 +123,18 @@ const features = [
         </h2>
         <p class="proj__sub reveal">{text.sectionSub}</p>
 
-        <article class="proj-card reveal">
+        <article
+            class="proj-card metal-border reveal"
+            data-tilt
+            data-tilt-max="1.5"
+            style="--metal-delay: -12s; --metal-duration: 32s;"
+        >
             <!-- Top bar -->
             <div class="proj-card__header">
-                <div class="proj-card__badge">
+                <div
+                    class="proj-card__badge metal-border-subtle"
+                    style="--metal-delay: -1s; --metal-duration: 24s;"
+                >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="13"
@@ -210,7 +218,10 @@ const features = [
                     <div class="proj-stack">
                         {
                             stack.map((t) => (
-                                <span class="spill">
+                                <span
+                                    class="spill metal-border-subtle"
+                                    style="--metal-delay: -9s; --metal-duration: 22s;"
+                                >
                                     {techIcons[t] && (
                                         <Fragment set:html={techIcons[t]} />
                                     )}
@@ -225,7 +236,8 @@ const features = [
                             href="https://github.com/agusm2002/simulated-enterprise-devops-infrastructure-lab"
                             target="_blank"
                             rel="noopener noreferrer"
-                            class="btn btn-primary proj-cta"
+                            class="btn btn-primary proj-cta metal-border"
+                            style="--metal-delay: -6s; --metal-duration: 26s;"
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -441,14 +453,15 @@ const features = [
 
         <div class="mini-cards">
             <!-- Chrono Reader -->
-            <article class="mini-card reveal">
+            <article
+                class="mini-card metal-border reveal"
+                data-tilt
+                data-tilt-max="2"
+                style="--metal-delay: -18s; --metal-duration: 30s;"
+            >
                 <!-- Left: content -->
                 <div class="mini-card__content">
                     <div class="mini-card__top">
-                        <div class="mini-badge">
-                            <Fragment set:html={techIcons["Swift"]} />
-                            Swift
-                        </div>
                         <a
                             href="https://github.com/agusm2002/chrono-reader"
                             target="_blank"
@@ -568,15 +581,11 @@ const features = [
 
                     <div class="mini-stack">
                         {
-                            [
-                                "Swift",
-                                "SwiftUI",
-                                "AVFoundation",
-                                "iOS",
-                                "CBZ/CBR",
-                                "M4B",
-                            ].map((t) => (
-                                <span class="mini-spill">
+                            ["Swift"].map((t) => (
+                                <span
+                                    class="mini-spill metal-border-subtle"
+                                    style="--metal-delay: -14s; --metal-duration: 22s;"
+                                >
                                     {techIcons[t] && (
                                         <Fragment set:html={techIcons[t]} />
                                     )}
@@ -590,7 +599,8 @@ const features = [
                         href="https://github.com/agusm2002/chrono-reader"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="btn btn-ghost mini-cta"
+                        class="btn btn-ghost metal-border mini-cta"
+                        style="--metal-delay: -7s; --metal-duration: 24s;"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -678,18 +688,15 @@ const features = [
 
     /* ── Main card ── */
     .proj-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
+        background: #0e0e0e;
+        border: none;
         border-radius: 1rem;
         overflow: hidden;
-        transition:
-            border-color 0.25s,
-            box-shadow 0.25s;
+        transition: box-shadow 0.25s;
     }
 
     .proj-card:hover {
-        border-color: var(--border-hover);
-        box-shadow: 0 0 60px rgba(34, 197, 94, 0.07);
+        box-shadow: none;
     }
 
     /* ── Header ── */
@@ -699,7 +706,7 @@ const features = [
         justify-content: space-between;
         padding: 1rem 1.75rem;
         border-bottom: 1px solid var(--border);
-        background: rgba(34, 197, 94, 0.025);
+        background: rgba(255, 255, 255, 0.02);
     }
 
     .proj-card__badge {
@@ -709,8 +716,8 @@ const features = [
         font-family: var(--font-mono);
         font-size: var(--text-xs);
         color: var(--green-400);
-        background: rgba(34, 197, 94, 0.1);
-        border: 1px solid rgba(34, 197, 94, 0.22);
+        background: transparent;
+        border: none;
         padding: 0.2rem 0.65rem;
         border-radius: 999px;
         letter-spacing: 0.08em;
@@ -783,8 +790,8 @@ const features = [
         font-family: var(--font-mono);
         font-size: var(--text-sm);
         color: var(--green-400);
-        background: rgba(34, 197, 94, 0.06);
-        border: 1px dashed rgba(34, 197, 94, 0.28);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px dashed rgba(255, 255, 255, 0.1);
         padding: 0.35rem 0.85rem;
         border-radius: 0.5rem;
         /* visually nudge down a bit to align with the button */
@@ -836,18 +843,15 @@ const features = [
         font-family: var(--font-mono);
         font-size: var(--text-sm);
         color: var(--text-muted);
-        background: rgba(34, 197, 94, 0.04);
-        border: 1px solid rgba(34, 197, 94, 0.1);
+        background: transparent;
+        border: none;
         padding: 0.25rem 0.625rem;
         border-radius: 0.3rem;
-        transition:
-            color 0.15s,
-            border-color 0.15s;
+        transition: color 0.15s;
     }
 
     .proj-card:hover .spill:hover {
         color: var(--green-300);
-        border-color: rgba(34, 197, 94, 0.28);
     }
 
     .proj-cta {
@@ -860,7 +864,7 @@ const features = [
         display: flex;
         flex-direction: column;
         align-items: stretch;
-        background: rgba(4, 10, 6, 0.35);
+        background: rgba(14, 14, 14, 0.6);
     }
 
     .arch-label {
@@ -897,8 +901,8 @@ const features = [
         font-family: var(--font-mono);
         font-size: var(--text-sm);
         color: var(--text-muted);
-        background: rgba(34, 197, 94, 0.06);
-        border: 1px solid rgba(34, 197, 94, 0.16);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
         padding: 0.4rem 0.875rem;
         border-radius: 0.375rem;
         display: flex;
@@ -910,13 +914,13 @@ const features = [
     }
 
     .proj-card:hover .arch-node {
-        background: rgba(34, 197, 94, 0.09);
-        border-color: rgba(34, 197, 94, 0.22);
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.12);
     }
 
     .arch-node--top {
         color: var(--green-400);
-        border-color: rgba(34, 197, 94, 0.28);
+        border-color: rgba(255, 255, 255, 0.14);
     }
     .arch-node--server {
         color: var(--text-muted);
@@ -926,7 +930,7 @@ const features = [
     }
     .arch-node--main {
         color: var(--green-300);
-        border-color: rgba(34, 197, 94, 0.32);
+        border-color: rgba(255, 255, 255, 0.16);
         font-weight: 500;
     }
     .arch-node--sm {
@@ -938,7 +942,7 @@ const features = [
     }
     .arch-node--docker {
         color: var(--green-300);
-        border-color: rgba(34, 197, 94, 0.28);
+        border-color: rgba(255, 255, 255, 0.14);
     }
     .arch-node--app {
         font-size: var(--text-xs);
@@ -965,7 +969,7 @@ const features = [
         letter-spacing: 0.01em;
     }
     .arch-node--app2 {
-        border-color: rgba(34, 197, 94, 0.24);
+        border-color: rgba(255, 255, 255, 0.12);
     }
     .arch-node--sec {
         color: var(--text-muted);
@@ -1004,7 +1008,7 @@ const features = [
     .arch-connector--v {
         width: 1px;
         height: 1.25rem;
-        background: rgba(34, 197, 94, 0.2);
+        background: rgba(255, 255, 255, 0.1);
         margin: 0.15rem auto;
     }
 
@@ -1017,7 +1021,7 @@ const features = [
     .arch-connector--h span {
         width: 1px;
         height: 1.25rem;
-        background: rgba(34, 197, 94, 0.2);
+        background: rgba(255, 255, 255, 0.1);
     }
 
     @media (max-width: 900px) {
@@ -1070,18 +1074,15 @@ const features = [
         display: grid;
         grid-template-columns: 1fr 330px;
         gap: 0;
-        background: var(--surface);
-        border: 1px solid var(--border);
+        background: #0e0e0e;
+        border: none;
         border-radius: 0.875rem;
         overflow: hidden;
-        transition:
-            border-color 0.25s,
-            box-shadow 0.25s;
+        transition: box-shadow 0.25s;
     }
 
     .mini-card:hover {
-        border-color: rgba(96, 165, 250, 0.3);
-        box-shadow: 0 0 50px rgba(96, 165, 250, 0.06);
+        box-shadow: none;
     }
 
     /* ── Mini card content (left) ── */
@@ -1106,9 +1107,9 @@ const features = [
         gap: 0.35rem;
         font-family: var(--font-mono);
         font-size: var(--text-xs);
-        color: rgba(96, 165, 250, 0.9);
-        background: rgba(96, 165, 250, 0.08);
-        border: 1px solid rgba(96, 165, 250, 0.2);
+        color: var(--green-400);
+        background: transparent;
+        border: none;
         padding: 0.2rem 0.6rem;
         border-radius: 999px;
         letter-spacing: 0.08em;
@@ -1128,7 +1129,7 @@ const features = [
     }
 
     .mini-card__gh-link:hover {
-        color: rgba(96, 165, 250, 0.9);
+        color: var(--green-300);
         gap: 0.5rem;
     }
 
@@ -1150,7 +1151,7 @@ const features = [
     .mini-mono {
         font-family: var(--font-mono);
         font-size: 0.82em;
-        color: rgba(96, 165, 250, 0.75);
+        color: var(--green-400);
     }
 
     /* mini features list */
@@ -1174,7 +1175,7 @@ const features = [
     .mini-feature > svg {
         flex-shrink: 0;
         margin-top: 0.15rem;
-        color: rgba(96, 165, 250, 0.5);
+        color: var(--green-500);
     }
 
     /* mini stack pills */
@@ -1192,18 +1193,15 @@ const features = [
         font-family: var(--font-mono);
         font-size: var(--text-sm);
         color: var(--text-dim);
-        background: rgba(96, 165, 250, 0.04);
-        border: 1px solid rgba(96, 165, 250, 0.12);
+        background: transparent;
+        border: none;
         padding: 0.2rem 0.55rem;
         border-radius: 0.3rem;
-        transition:
-            color 0.15s,
-            border-color 0.15s;
+        transition: color 0.15s;
     }
 
     .mini-card:hover .mini-spill:hover {
-        color: rgba(96, 165, 250, 0.9);
-        border-color: rgba(96, 165, 250, 0.28);
+        color: var(--green-300);
     }
 
     /* ghost button for mini CTA */
@@ -1216,21 +1214,19 @@ const features = [
         font-weight: 500;
         padding: 0.55rem 1.1rem;
         border-radius: 0.5rem;
-        color: rgba(96, 165, 250, 0.85);
-        background: rgba(96, 165, 250, 0.06);
-        border: 1px solid rgba(96, 165, 250, 0.2);
+        color: var(--green-300);
+        background: rgba(255, 255, 255, 0.04);
+        border: none;
         transition:
             background 0.2s,
-            border-color 0.2s,
             color 0.2s;
         width: fit-content;
         text-decoration: none;
     }
 
     .btn-ghost:hover {
-        background: rgba(96, 165, 250, 0.12);
-        border-color: rgba(96, 165, 250, 0.4);
-        color: rgba(96, 165, 250, 1);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--green-50);
     }
 
     .mini-cta {
@@ -1243,7 +1239,7 @@ const features = [
         place-items: center;
         align-self: stretch;
         padding: 0.75rem 0.65rem;
-        background: rgba(4, 8, 20, 0.4);
+        background: rgba(10, 10, 10, 0.5);
         overflow: hidden;
     }
 
@@ -1251,6 +1247,7 @@ const features = [
         position: relative;
         width: 258px;
         height: 404px;
+        will-change: transform;
         animation: fan-sway 12s ease-in-out infinite;
     }
 
@@ -1262,10 +1259,9 @@ const features = [
         border-radius: 14px;
         box-shadow:
             0 8px 32px rgba(0, 0, 0, 0.55),
-            0 0 0 1px rgba(96, 165, 250, 0.12);
-        transition:
-            transform 0.35s ease,
-            box-shadow 0.35s ease;
+            0 0 0 1px rgba(255, 255, 255, 0.08);
+        transition: box-shadow 0.35s ease;
+        will-change: transform;
         user-select: none;
         pointer-events: none;
     }
@@ -1297,7 +1293,7 @@ const features = [
     .mini-card:hover .fan-shot {
         box-shadow:
             0 12px 36px rgba(0, 0, 0, 0.58),
-            0 0 0 1px rgba(96, 165, 250, 0.2);
+            0 0 0 1px rgba(255, 255, 255, 0.14);
     }
 
     @keyframes fan-sway {
