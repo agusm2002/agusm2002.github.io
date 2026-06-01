@@ -1,0 +1,1212 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+const localResources = [
+    { name: "kubernetes_namespace.aiops", desc: "Creates the `aiops` namespace where the entire stack lives. Labeled with `managed-by: opentofu` for traceability.", type: "namespace" },
+    { name: "kubernetes_config_map.prometheus", desc: "ConfigMap with `prometheus.yml` and `alert_rules.yml`. Defines scrape configs for Prometheus, node-exporter and k3s-metrics, plus three base alerts: HighCPU, DiskSpaceLow, ServiceDown.", type: "config" },
+    { name: "kubernetes_config_map.grafana", desc: "ConfigMap with `datasources.yml`. Automatically provisions Prometheus and Loki datasources in Grafana with no manual post-deploy configuration.", type: "config" },
+];
+
+const ociResources = [
+    { file: "network.tf", desc: "VCN (10.0.0.0/16), public subnet (10.0.1.0/24), Internet Gateway and route table. Free Tier doesn't include NAT Gateway — both VMs go in the public subnet protected by NSG.", icon: "shield" },
+    { file: "main.tf", desc: "Two Network Security Groups (bastion + k3s) with least-privilege rules. SSH to bastion only from admin IP. k3s only accepts SSH and API from the bastion. Public HTTPS for Grafana demo.", icon: "lock" },
+    { file: "compute.tf", desc: "Two Ampere A1 ARM64 VMs: bastion (1 OCPU, 6 GB) and k3s (3 OCPUs, 18 GB). Rocky Linux 9 image with fallback to Oracle Linux 9. Cloud-init via template.", icon: "server" },
+    { file: "object_storage.tf", desc: "OCI Object Storage bucket for Loki as log backend. 31-day retention within the Free Tier limit of 10 GB/month.", icon: "database" },
+    { file: "vault.tf", desc: "OCI Vault + master encryption key (AES-256). Secrets placeholder ('CHANGE_ME') that gets populated manually post-apply from the OCI console.", icon: "key" },
+    { file: "data.tf", desc: "Data sources: availability domains, object storage namespace. Reference existing resources without creating them.", icon: "search" },
+];
+
+const iacVsConfig = [
+    { aspect: "Approach", iac: "Declarative: defines the desired state. OpenTofu reconciles the real state against the .tf file.", config: "Procedural: defines steps to reach the state. Ansible executes tasks in order." },
+    { aspect: "Idempotency", iac: "Native. `tofu plan` shows diff. If the resource already exists as declared, it does nothing.", config: "Depends on the module. Ansible has idempotent modules (lineinfile, systemd) but also shell commands without idempotency." },
+    { aspect: "State", iac: "State file (terraform.tfstate). OpenTofu knows exactly which resources it created and their current state.", config: "No persistent state. Ansible queries the real system state on every run." },
+    { aspect: "Orchestration", iac: "Automatic dependency graph. OpenTofu resolves the resource creation order.", config: "Explicit order. Ansible plays and roles run in the defined order." },
+    { aspect: "Drift Detection", iac: "`tofu plan` detects manual changes and reverts them on the next apply.", config: "Plays re-run. If someone changed a file, lineinfile corrects it." },
+    { aspect: "Use in this project", iac: "Create infrastructure (VMs, networks, NSGs, buckets, vault) and Kubernetes resources (namespace, ConfigMaps).", config: "Configure the OS (packages, SELinux, firewalld, SSH). Does not create infrastructure; it configures it." },
+];
+
+const workflowSteps = [
+    { step: "1", cmd: "tofu init", desc: "Downloads providers and modules. Creates the `.terraform/` directory. Only run once or when changing providers.", dir: "tofu/" },
+    { step: "2", cmd: "tofu plan", desc: "Compares the desired state (.tf) with the real state (state). Shows which resources will be created, modified, or destroyed. Does not apply changes.", dir: "tofu/" },
+    { step: "3", cmd: "tofu apply", desc: "Applies the plan. Creates, modifies, or destroys resources so the real state matches the desired one. Asks for confirmation.", dir: "tofu/" },
+];
+---
+
+<DocsLayout
+    title="OpenTofu Overview - ITOps Automation Lab"
+    description="Phase 2 of the Rocky Linux ITOps Automation Lab: Infrastructure as Code with OpenTofu — local Kubernetes provider and OCI provider for Oracle Cloud, core concepts, and workflow."
+    activePage="opentofu-overview"
+    lang="en"
+    prev={{
+        label: "Rocky Linux vs Ubuntu",
+        href: "/en/aiops-lab/phase-1/rocky-vs-ubuntu",
+    }}
+    next={{
+        label: "Kubernetes Provider",
+        href: "/en/aiops-lab/phase-2/kubernetes-provider",
+    }}
+>
+    <div class="docs-page">
+        <!-- ═══ Hero ═══ -->
+        <div class="f2-hero">
+            <div class="f2-hero__top">
+                <div class="f2-hero__badge">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    Phase 2
+                </div>
+                <span class="f2-hero__time">OpenTofu 1.7+</span>
+            </div>
+
+            <h1 class="f2-hero__title">
+                OpenTofu Overview
+                <span class="f2-hero__accent">· Infrastructure as Code</span>
+            </h1>
+            <p class="f2-hero__subtitle">
+                Phase 2 introduces declarative IaC with OpenTofu. Define the
+                desired infrastructure state in <code>.tf</code> files and
+                OpenTofu reconciles the real state against them. Two providers
+                coexist: Kubernetes for the local cluster and OCI for Oracle
+                Cloud. Same code, two destinations.
+            </p>
+        </div>
+
+        <!-- ═══ IaC vs Config Management ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">01</span>
+                <h2 class="overview-h2">IaC vs Configuration Management</h2>
+            </div>
+            <p class="overview-lead">
+                OpenTofu and Ansible solve different problems. Ansible
+                configures operating systems. OpenTofu creates infrastructure.
+                Knowing when to use each is as important as knowing how to use them.
+            </p>
+
+            <div class="compare-grid">
+                {iacVsConfig.map((row) => (
+                    <div class="compare-row-detail">
+                        <div class="compare-row-detail__aspect">{row.aspect}</div>
+                        <div class="compare-row-detail__cols">
+                            <div class="compare-row-detail__col compare-row-detail__col--iac">
+                                <span class="compare-row-detail__label">OpenTofu</span>
+                                <span class="compare-row-detail__text">{row.iac}</span>
+                            </div>
+                            <div class="compare-row-detail__col compare-row-detail__col--cfg">
+                                <span class="compare-row-detail__label">Ansible</span>
+                                <span class="compare-row-detail__text">{row.config}</span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <!-- ═══ Providers ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">02</span>
+                <h2 class="overview-h2">Two Providers, Two Destinations</h2>
+            </div>
+            <p class="overview-lead">
+                The project uses two independent OpenTofu configurations.
+                The local one manages resources inside the k3s cluster. The Oracle
+                Cloud one creates all the network, compute and managed services
+                infrastructure. They don't share state — they're separate stacks.
+            </p>
+
+            <div class="provider-duo">
+                <div class="provider-card provider-card--local">
+                    <div class="provider-card__dir">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        <code>tofu/</code>
+                    </div>
+                    <div class="provider-card__provider">hashicorp/kubernetes ~> 2.30</div>
+                    <p class="provider-card__desc">
+                        Provider that points to the k3s kubeconfig. Creates the
+                        <code>aiops</code> namespace and two ConfigMaps:
+                        Prometheus configuration (scrape + alert rules)
+                        and Grafana datasources.
+                    </p>
+                </div>
+                <div class="provider-card provider-card--oci">
+                    <div class="provider-card__dir">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                        <code>tofu/oracle/</code>
+                    </div>
+                    <div class="provider-card__provider">oracle/oci ~> 6.0</div>
+                    <p class="provider-card__desc">
+                        Provider that authenticates against OCI via API key. Creates
+                        VCN, subnets, NSGs, Ampere A1 VMs, OCI Vault and Object
+                        Storage. All within the Free Tier — cost $0.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Local Resources ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">03</span>
+                <h2 class="overview-h2">Local Resources (tofu/)</h2>
+            </div>
+            <p class="overview-lead">
+                Three resources in the local stack. They are the base that the rest of
+                the Kubernetes manifests assume as pre-existing.
+            </p>
+
+            <div class="res-list">
+                {localResources.map((r) => (
+                    <div class="res-card">
+                        <div class="res-card__header">
+                            <div class="res-card__type">{r.type}</div>
+                            <code class="res-card__name">{r.name}</code>
+                        </div>
+                        <p class="res-card__desc">{r.desc}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div class="info-card">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>Why OpenTofu for ConfigMaps and not kubectl apply?</strong>
+                    Because OpenTofu guarantees the ConfigMap exists before
+                    Deployments try to mount it. Tofu's dependency graph
+                    ensures the order: namespace → ConfigMap.
+                    With <code>kubectl apply -f</code>, the order depends on how
+                    the files were listed.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ OCI Resources ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">04</span>
+                <h2 class="overview-h2">Oracle Cloud Resources (tofu/oracle/)</h2>
+            </div>
+            <p class="overview-lead">
+                Six <code>.tf</code> files that together define the
+                complete Oracle Cloud infrastructure. Each file has
+                a single responsibility.
+            </p>
+
+            <div class="oci-files">
+                {ociResources.map((r) => (
+                    <div class="oci-file">
+                        <div class="oci-file__header">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 7 20 7"/></svg>
+                            <code class="oci-file__name">{r.file}</code>
+                        </div>
+                        <p class="oci-file__desc">{r.desc}</p>
+                    </div>
+                ))}
+            </div>
+
+            <p class="overview-text">
+                The network architecture follows a simple principle: VCN with a
+                public subnet, both VMs with public IPs, but protected by
+                NSG. The bastion only accepts SSH from the admin IP. The
+                k3s VM only accepts SSH and k3s API from the bastion's private IP.
+                HTTPS is open to the world for the public Grafana demo.
+            </p>
+        </div>
+
+        <!-- ═══ Workflow ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">05</span>
+                <h2 class="overview-h2">Workflow: init → plan → apply</h2>
+            </div>
+            <p class="overview-lead">
+                The OpenTofu workflow has three commands. The
+                process is the same for both the Kubernetes provider and the
+                OCI one.
+            </p>
+
+            <div class="wf-grid">
+                {workflowSteps.map((w) => (
+                    <div class="wf-card">
+                        <div class="wf-card__step">{w.step}</div>
+                        <div class="wf-card__content">
+                            <div class="wf-card__cmd">
+                                <span class="wf-card__dir">{w.dir}</span>
+                                <code>{w.cmd}</code>
+                            </div>
+                            <p class="wf-card__desc">{w.desc}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">tofu workflow</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-comment"># Initialize — downloads the Kubernetes provider</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">cd tofu && tofu init</span></div>
+                    <div class="t-line"><span class="t-out">Initializing the backend...</span></div>
+                    <div class="t-line"><span class="t-out">Initializing provider plugins...</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">✓</span> Provider hashicorp/kubernetes v2.30.0</span></div>
+                    <div class="t-line"><span class="t-out">OpenTofu has been successfully initialized!</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Plan — see what will be created without applying</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">tofu plan</span></div>
+                    <div class="t-line"><span class="t-out">OpenTofu will perform the following actions:</span></div>
+                    <div class="t-line"><span class="t-out">  <span class="t-add">+</span> kubernetes_namespace.aiops</span></div>
+                    <div class="t-line"><span class="t-out">  <span class="t-add">+</span> kubernetes_config_map.prometheus</span></div>
+                    <div class="t-line"><span class="t-out">  <span class="t-add">+</span> kubernetes_config_map.grafana</span></div>
+                    <div class="t-line"><span class="t-out">Plan: 3 to add, 0 to change, 0 to destroy.</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Apply — create the resources</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">tofu apply</span></div>
+                    <div class="t-line"><span class="t-out">Do you want to perform these actions? Only 'yes' will be accepted.</span></div>
+                    <div class="t-line"><span class="t-out">Enter a value: <span class="t-ok">yes</span></span></div>
+                    <div class="t-line"><span class="t-out">kubernetes_namespace.aiops: Creating...</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">✓</span> Apply complete! Resources: 3 added, 0 changed, 0 destroyed.</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Variables & Outputs ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">06</span>
+                <h2 class="overview-h2">Variables & Outputs</h2>
+            </div>
+            <p class="overview-lead">
+                OpenTofu separates resource definitions from concrete values.
+                Variables allow reusing the same code for the local lab and Oracle Cloud.
+                Outputs expose generated information (IPs, OCIDs) for other tools.
+            </p>
+
+            <div class="var-output-grid">
+                <div class="var-card">
+                    <div class="var-card__label">Variables (input)</div>
+                    <div class="var-card__desc">
+                        Define what can be parameterized without touching the code.
+                        The <code>terraform.tfvars</code> file assigns concrete
+                        values. Variables marked <code>sensitive</code>
+                        are not shown in logs or in the <code>plan</code> output.
+                    </div>
+                    <div class="var-card__examples">
+                        <code>kubeconfig_path</code>
+                        <code>namespace</code>
+                        <code>grafana_admin_password</code>
+                        <code>region</code>
+                        <code>compartment_id</code>
+                        <code>ssh_public_key</code>
+                        <code>admin_cidr</code>
+                    </div>
+                </div>
+                <div class="var-card">
+                    <div class="var-card__label">Outputs (output)</div>
+                    <div class="var-card__desc">
+                        Expose values generated during apply — IPs,
+                        OCIDs, names. Useful for scripts that need to know
+                        the bastion IP or the Vault ID after the
+                        deploy. Query them with <code>tofu output</code>.
+                    </div>
+                    <div class="var-card__examples">
+                        <code>bastion_public_ip</code>
+                        <code>k3s_private_ip</code>
+                        <code>vault_id</code>
+                        <code>loki_bucket_name</code>
+                        <code>namespace_name</code>
+                    </div>
+                </div>
+            </div>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">outputs</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-comment"># After apply, query the outputs</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">tofu output</span></div>
+                    <div class="t-line"><span class="t-out">bastion_public_ip = "129.153.x.x"</span></div>
+                    <div class="t-line"><span class="t-out">k3s_private_ip = "10.0.1.12"</span></div>
+                    <div class="t-line"><span class="t-out">vault_id = "ocid1.vault.oc1.sa-saopaulo-1.xxx"</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Export IPs as environment variables for Ansible</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">export BASTION_PUBLIC_IP=$(tofu output -raw bastion_public_ip)</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">export K3S_PRIVATE_IP=$(tofu output -raw k3s_private_ip)</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ State ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">07</span>
+                <h2 class="overview-h2">The State File</h2>
+            </div>
+            <p class="overview-lead">
+                <code>terraform.tfstate</code> is OpenTofu's most important file.
+                It contains the mapping between resources declared in
+                <code>.tf</code> and real resources in the provider. Without this
+                file, OpenTofu doesn't know what resources it manages.
+            </p>
+
+            <div class="state-points">
+                <div class="state-point">
+                    <div class="state-point__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <div class="state-point__text">
+                        <strong>Local by default.</strong> In the local lab, the
+                        state is stored in <code>terraform.tfstate</code> in the
+                        same directory. It's sufficient for a single
+                        developer.
+                    </div>
+                </div>
+                <div class="state-point">
+                    <div class="state-point__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    </div>
+                    <div class="state-point__text">
+                        <strong>Remote for teams.</strong> In production you'd
+                        use a remote backend (S3, OCI Object Storage) to
+                        share the state between multiple people and avoid
+                        conflicts.
+                    </div>
+                </div>
+                <div class="state-point">
+                    <div class="state-point__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    </div>
+                    <div class="state-point__text">
+                        <strong>Never edited manually.</strong> The state is
+                        JSON generated by OpenTofu. Editing it by hand breaks
+                        consistency between desired and real state. Only
+                        modify it via <code>tofu apply</code> or
+                        <code>tofu state</code>.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Phases 3-4 ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">08</span>
+                <h2 class="overview-h2">OpenTofu in the Rest of the Project</h2>
+            </div>
+            <p class="overview-lead">
+                Phase 2 lays the IaC foundation. Later phases
+                add more resources and go deeper into each provider.
+            </p>
+
+            <div class="road-grid">
+                <div class="road-card">
+                    <div class="road-card__phase">Phase 3</div>
+                    <div class="road-card__title">HashiCorp Vault</div>
+                    <div class="road-card__desc">
+                        Kubernetes resources are added to deploy Vault
+                        in the cluster and ConfigMaps for the Vault Agent Injector.
+                    </div>
+                </div>
+                <div class="road-card">
+                    <div class="road-card__phase">Phase 9</div>
+                    <div class="road-card__title">Oracle Cloud Migration</div>
+                    <div class="road-card__desc">
+                        Run <code>tofu apply</code> in <code>tofu/oracle/</code>.
+                        The OCI provider creates all the cloud infrastructure.
+                        Ansible provisions the resulting VMs.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ CTA ═══ -->
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card">
+                <div class="cta-card__content">
+                    <h3 class="cta-card__title">Next: Kubernetes Provider</h3>
+                    <p class="cta-card__desc">
+                        The next page goes deeper into the Kubernetes
+                        provider: how it points to the k3s kubeconfig, the
+                        resources it creates, and the complete init →
+                        plan → apply workflow.
+                    </p>
+                </div>
+                <a href="/en/aiops-lab/phase-2/kubernetes-provider" class="cta-card__btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>
+                    Kubernetes Provider
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page {
+        max-width: 740px;
+    }
+
+    /* ── Hero ── */
+    .f2-hero {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.75rem;
+        margin-bottom: 3rem;
+    }
+
+    .f2-hero__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+
+    .f2-hero__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+
+    .f2-hero__time {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.4rem;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .f2-hero__title {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 700;
+        color: var(--green-50);
+        line-height: 1.15;
+        margin-bottom: 0.5rem;
+    }
+
+    .f2-hero__accent {
+        color: var(--green-500);
+        font-weight: 500;
+    }
+
+    .f2-hero__subtitle {
+        font-size: var(--text-md);
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 560px;
+    }
+
+    .f2-hero__subtitle code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    /* ── Sections ── */
+    .overview-section {
+        margin-bottom: 3rem;
+    }
+
+    .overview-section--cta {
+        margin-top: 1rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .section-num {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-600);
+        font-weight: 500;
+    }
+
+    .overview-h2 {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0;
+    }
+
+    .overview-lead {
+        font-size: var(--text-base);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1.5rem;
+        max-width: 560px;
+    }
+
+    .overview-text {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1rem;
+    }
+
+    .overview-text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    /* ── Info Card ── */
+    .info-card {
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.875rem 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .info-card__icon {
+        flex-shrink: 0;
+        color: var(--green-400);
+        margin-top: 0.1rem;
+    }
+
+    .info-card__icon svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+    }
+
+    .info-card__text strong {
+        color: var(--green-50);
+        font-weight: 600;
+    }
+
+    .info-card__text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    /* ── Compare Grid (IaC vs Config) ── */
+    .compare-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .compare-row-detail {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.75rem 0.9rem;
+    }
+
+    .compare-row-detail__aspect {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.4rem;
+    }
+
+    .compare-row-detail__cols {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+    }
+
+    .compare-row-detail__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-3xs);
+        color: var(--green-500);
+        display: block;
+        margin-bottom: 0.15rem;
+    }
+
+    .compare-row-detail__text {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+
+    .compare-row-detail__col--iac {
+        border-right: 1px solid var(--border);
+        padding-right: 0.6rem;
+    }
+
+    .compare-row-detail__col--cfg {
+        padding-left: 0;
+    }
+
+    /* ── Provider Duo ── */
+    .provider-duo {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+    }
+
+    .provider-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+    }
+
+    .provider-card--local {
+        border-color: rgba(34, 197, 94, 0.1);
+        background: rgba(34, 197, 94, 0.02);
+    }
+
+    .provider-card--oci {
+        border-color: rgba(59, 130, 246, 0.1);
+        background: rgba(59, 130, 246, 0.02);
+    }
+
+    .provider-card__dir {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        margin-bottom: 0.4rem;
+        color: var(--text-dim);
+    }
+
+    .provider-card__dir svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .provider-card__dir code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+
+    .provider-card__provider {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-bottom: 0.4rem;
+    }
+
+    .provider-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    .provider-card__desc code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.2rem;
+        color: var(--green-300);
+    }
+
+    /* ── Resource List ── */
+    .res-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        margin-bottom: 1rem;
+    }
+
+    .res-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.85rem 1rem;
+        transition: background 0.2s;
+    }
+
+    .res-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .res-card__header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .res-card__type {
+        font-family: var(--font-mono);
+        font-size: var(--text-3xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.2rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        white-space: nowrap;
+    }
+
+    .res-card__name {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+
+    .res-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    /* ── OCI Files ── */
+    .oci-files {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        margin-bottom: 1rem;
+    }
+
+    .oci-file {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.75rem 0.9rem;
+        transition: background 0.2s;
+    }
+
+    .oci-file:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .oci-file__header {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.3rem;
+        color: var(--text-dim);
+    }
+
+    .oci-file__header svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+    }
+
+    .oci-file__name {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+
+    .oci-file__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    /* ── Workflow Grid ── */
+    .wf-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .wf-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.85rem;
+        padding: 0.85rem 1rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+    }
+
+    .wf-card__step {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-400);
+        flex-shrink: 0;
+    }
+
+    .wf-card__cmd {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .wf-card__dir {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+    }
+
+    .wf-card__cmd code {
+        font-family: var(--font-mono);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        background: none;
+        padding: 0;
+    }
+
+    .wf-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.45;
+        margin: 0;
+    }
+
+    /* ── Terminal ── */
+    .terminal-block {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        margin-bottom: 1.5rem;
+    }
+
+    .terminal-block__bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .terminal-block__dots {
+        display: flex;
+        gap: 0.3rem;
+    }
+
+    .terminal-block__dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+        display: block;
+    }
+
+    .terminal-block__title {
+        color: var(--text-dim);
+        font-size: var(--text-2xs);
+        margin-left: auto;
+        margin-right: auto;
+        padding-right: 2.5rem;
+    }
+
+    .terminal-block__body {
+        padding: 0.65rem 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    .t-line {
+        line-height: 1.5;
+    }
+
+    .t-line--spacer {
+        height: 0.35rem;
+    }
+
+    .t-prompt {
+        color: var(--green-600);
+        margin-right: 0.3rem;
+    }
+
+    .t-cmd {
+        color: var(--green-300);
+    }
+
+    .t-out {
+        color: var(--text-dim);
+        padding-left: 1.1rem;
+    }
+
+    .t-ok {
+        color: var(--green-400);
+    }
+
+    .t-add {
+        color: var(--green-400);
+    }
+
+    .t-comment {
+        color: rgba(255, 255, 255, 0.25);
+        font-style: italic;
+        padding-left: 0;
+    }
+
+    /* ── Variable / Output Grid ── */
+    .var-output-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .var-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.1rem;
+    }
+
+    .var-card__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        font-weight: 600;
+        color: var(--green-300);
+        margin-bottom: 0.4rem;
+    }
+
+    .var-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin-bottom: 0.6rem;
+    }
+
+    .var-card__desc code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.2rem;
+        color: var(--green-300);
+    }
+
+    .var-card__examples {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .var-card__examples code {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        padding: 0.15rem 0.35rem;
+        border-radius: 0.25rem;
+    }
+
+    /* ── State Points ── */
+    .state-points {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .state-point {
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.75rem 0.9rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+    }
+
+    .state-point__icon {
+        flex-shrink: 0;
+        color: var(--green-500);
+        margin-top: 0.1rem;
+    }
+
+    .state-point__icon svg {
+        width: 14px;
+        height: 14px;
+        display: block;
+    }
+
+    .state-point__text {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+
+    .state-point__text strong {
+        color: var(--green-50);
+    }
+
+    .state-point__text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.2rem;
+        color: var(--green-300);
+    }
+
+    /* ── Road Grid ── */
+    .road-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+    }
+
+    .road-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.1rem;
+    }
+
+    .road-card__phase {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--green-400);
+        font-weight: 500;
+        margin-bottom: 0.2rem;
+    }
+
+    .road-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-bottom: 0.35rem;
+    }
+
+    .road-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    /* ── CTA ── */
+    .cta-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+    }
+
+    .cta-card__content {
+        flex: 1;
+    }
+
+    .cta-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0 0 0.25rem;
+    }
+
+    .cta-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0;
+    }
+
+    .cta-card__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--green-50);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.6rem 1rem;
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.2s, border-color 0.2s;
+    }
+
+    .cta-card__btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--border-hover);
+    }
+
+    .cta-card__btn svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+        .compare-row-detail__cols,
+        .provider-duo,
+        .var-output-grid,
+        .road-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .compare-row-detail__col--iac {
+            border-right: none;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.4rem;
+            padding-right: 0;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .cta-card {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>

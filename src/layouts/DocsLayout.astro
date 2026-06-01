@@ -1,0 +1,1696 @@
+---
+import ClientRouter from "astro/components/ClientRouter.astro";
+
+interface Props {
+    title?: string;
+    description?: string;
+    activePage?: string;
+    lang?: "es" | "en";
+    prev?: { label: string; href: string };
+    next?: { label: string; href: string };
+}
+const {
+    title = "ITOps Automation Lab Docs",
+    description = "Documentación del ITOps Automation Lab",
+    activePage = "",
+    lang = "es",
+} = Astro.props;
+const baseUrl = import.meta.env.BASE_URL;
+const faviconHref = `${baseUrl}favicon.svg?v=2`;
+const isEnglish = lang === "en";
+
+const prefix = isEnglish ? "/en" : "";
+const currentPath = Astro.url.pathname;
+
+const groupIconSrc = [
+    // Getting Started — no brand logo, clock/guide
+    null,
+    // Phase 1 — Rocky Linux
+    "/tech-icons/rockylinux.svg",
+    // Phase 2 — OpenTofu (IaC)
+    "/tech-icons/opentofu.svg",
+    // Phase 3 — HashiCorp Vault
+    "/tech-icons/vault.svg",
+    // Phase 4 — k3s
+    "/tech-icons/k3s.svg",
+    // Phase 5 — n8n
+    "/tech-icons/n8n.svg",
+    // Phase 6 — Jenkins
+    "/tech-icons/jenkins.svg",
+    // Phase 7 — ArgoCD
+    "/tech-icons/argocd.svg",
+    // Phase 8 — Security (no brand logo)
+    null,
+    // Phase 9 — Oracle Cloud
+    "/tech-icons/oci.svg",
+    // Phase 10 — Grafana
+    "/tech-icons/grafana.svg",
+    // Reference — no brand logo
+    null,
+];
+
+// Fallback inline SVGs for groups without brand logos
+const groupIconFallback = [
+    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 12 15 16 10"/></svg>`,
+    "",
+    "",
+    `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>`,
+];
+
+const navGroups = isEnglish
+    ? [
+          {
+              label: "Getting Started",
+              items: [
+                  {
+                      label: "Prerequisites",
+                      slug: "getting-started/prerequisites",
+                  },
+                  { label: "Quick Start", slug: "getting-started/quick-start" },
+              ],
+          },
+          {
+              label: "Phase 1 — Rocky Linux & RHEL Hardening",
+              items: [
+                  { label: "Base Setup", slug: "phase-1/base-setup" },
+                  { label: "SELinux Configuration", slug: "phase-1/selinux" },
+                  {
+                      label: "Firewalld & Network Security",
+                      slug: "phase-1/firewalld",
+                  },
+                  { label: "SSH Hardening", slug: "phase-1/ssh-hardening" },
+                  {
+                      label: "Rocky Linux vs Ubuntu",
+                      slug: "phase-1/rocky-vs-ubuntu",
+                  },
+              ],
+          },
+          {
+              label: "Phase 2 — Infrastructure as Code",
+              items: [
+                  {
+                      label: "OpenTofu Overview",
+                      slug: "phase-2/opentofu-overview",
+                  },
+                  {
+                      label: "Kubernetes Provider",
+                      slug: "phase-2/kubernetes-provider",
+                  },
+                  {
+                      label: "Workflow (init → plan → apply)",
+                      slug: "phase-2/workflow",
+                  },
+                  {
+                      label: "IaC vs Configuration Management",
+                      slug: "phase-2/iac-vs-config",
+                  },
+              ],
+          },
+          {
+              label: "Phase 3 — Secrets Management",
+              items: [
+                  {
+                      label: "HashiCorp Vault Overview",
+                      slug: "phase-3/vault-overview",
+                  },
+                  {
+                      label: "Vault Agent Injector",
+                      slug: "phase-3/vault-agent-injector",
+                  },
+                  {
+                      label: "Kubernetes Auth Method",
+                      slug: "phase-3/kubernetes-auth",
+                  },
+                  {
+                      label: "Secret Injection Flow",
+                      slug: "phase-3/secret-injection-flow",
+                  },
+                  {
+                      label: "Dev Mode vs Production",
+                      slug: "phase-3/dev-vs-prod",
+                  },
+              ],
+          },
+          {
+              label: "Phase 4 — k3s & Observability Stack",
+              items: [
+                  { label: "k3s Setup", slug: "phase-4/k3s-setup" },
+                  {
+                      label: "Prometheus & Alertmanager",
+                      slug: "phase-4/prometheus-alertmanager",
+                  },
+                  {
+                      label: "Loki & Grafana Alloy",
+                      slug: "phase-4/loki-grafana-alloy",
+                  },
+                  {
+                      label: "Grafana Dashboards",
+                      slug: "phase-4/grafana-dashboards",
+                  },
+                  { label: "n8n Deployment", slug: "phase-4/n8n-deployment" },
+              ],
+          },
+          {
+              label: "Phase 5 — Incident Automation (n8n + LLM)",
+              items: [
+                  {
+                      label: "OpenCode Go API Setup",
+                      slug: "phase-5/opencode-go-api",
+                  },
+                  {
+                      label: "Workflow 1: Incident Response",
+                      slug: "phase-5/workflow-1-incident-response",
+                  },
+                  {
+                      label: "Workflow 2: Log Analysis",
+                      slug: "phase-5/workflow-2-log-analysis",
+                  },
+                  {
+                      label: "Workflow 3: Incident Simulation",
+                      slug: "phase-5/workflow-3-incidentsimulation",
+                  },
+              ],
+          },
+          {
+              label: "Phase 6 — CI/CD with Jenkins",
+              items: [
+                  {
+                      label: "Jenkins on Kubernetes",
+                      slug: "phase-6/jenkins-on-k8s",
+                  },
+                  { label: "Dynamic Agents", slug: "phase-6/dynamic-agents" },
+                  { label: "Pipeline Setup", slug: "phase-6/pipeline-setup" },
+                  {
+                      label: "Jenkins vs GitHub Actions",
+                      slug: "phase-6/jenkins-vs-gh-actions",
+                  },
+              ],
+          },
+          {
+              label: "Phase 7 — GitOps with ArgoCD",
+              items: [
+                  { label: "ArgoCD Overview", slug: "phase-7/argocd-overview" },
+                  { label: "App of Apps Pattern", slug: "phase-7/app-of-apps" },
+                  {
+                      label: "Drift Detection Demo",
+                      slug: "phase-7/drift-detection",
+                  },
+              ],
+          },
+          {
+              label: "Phase 8 — Production Security",
+              items: [
+                  { label: "Fail2Ban", slug: "phase-8/fail2ban" },
+                  {
+                      label: "Hardening Checklist",
+                      slug: "phase-8/hardening-checklist",
+                  },
+              ],
+          },
+          {
+              label: "Phase 9 — Oracle Cloud Migration",
+              items: [
+                  {
+                      label: "Architecture (Bastion + k3s)",
+                      slug: "phase-9/architecture",
+                  },
+                  {
+                      label: "OpenTofu OCI Provider",
+                      slug: "phase-9/opentofu-oci",
+                  },
+                  {
+                      label: "OCI Vault vs HashiCorp Vault",
+                      slug: "phase-9/oci-vault-vs-hashicorp",
+                  },
+                  {
+                      label: "MinIO → OCI Object Storage",
+                      slug: "phase-9/minio-to-oci",
+                  },
+                  {
+                      label: "Lab vs Production Comparison",
+                      slug: "phase-9/lab-vs-prod",
+                  },
+              ],
+          },
+          {
+              label: "Phase 10 — SLO/SLI & Final Docs",
+              items: [
+                  {
+                      label: "SLI Definitions",
+                      slug: "phase-10/sli-definitions",
+                  },
+                  {
+                      label: "SLO Objectives & Error Budgets",
+                      slug: "phase-10/slo-objectives",
+                  },
+                  {
+                      label: "Grafana SLO Dashboard",
+                      slug: "phase-10/grafana-slo-dashboard",
+                  },
+              ],
+          },
+          {
+              label: "Reference",
+              items: [
+                  {
+                      label: "Lessons Learned",
+                      slug: "reference/lessons-learned",
+                  },
+                  {
+                      label: "Resources & Links",
+                      slug: "reference/resources-links",
+                  },
+              ],
+          },
+      ]
+    : [
+          {
+              label: "Getting Started",
+              items: [
+                  {
+                      label: "Prerequisites",
+                      slug: "getting-started/prerequisites",
+                  },
+                  { label: "Quick Start", slug: "getting-started/quick-start" },
+              ],
+          },
+          {
+              label: "Fase 1 — Rocky Linux & RHEL Hardening",
+              items: [
+                  { label: "Base Setup", slug: "phase-1/base-setup" },
+                  {
+                      label: "Configuración de SELinux",
+                      slug: "phase-1/selinux",
+                  },
+                  {
+                      label: "Firewalld & Seguridad de Red",
+                      slug: "phase-1/firewalld",
+                  },
+                  { label: "SSH Hardening", slug: "phase-1/ssh-hardening" },
+                  {
+                      label: "Rocky Linux vs Ubuntu",
+                      slug: "phase-1/rocky-vs-ubuntu",
+                  },
+              ],
+          },
+          {
+              label: "Fase 2 — Infrastructure as Code",
+              items: [
+                  {
+                      label: "OpenTofu Overview",
+                      slug: "phase-2/opentofu-overview",
+                  },
+                  {
+                      label: "Kubernetes Provider",
+                      slug: "phase-2/kubernetes-provider",
+                  },
+                  {
+                      label: "Workflow (init → plan → apply)",
+                      slug: "phase-2/workflow",
+                  },
+                  {
+                      label: "IaC vs Configuration Management",
+                      slug: "phase-2/iac-vs-config",
+                  },
+              ],
+          },
+          {
+              label: "Fase 3 — Secrets Management",
+              items: [
+                  {
+                      label: "HashiCorp Vault Overview",
+                      slug: "phase-3/vault-overview",
+                  },
+                  {
+                      label: "Vault Agent Injector",
+                      slug: "phase-3/vault-agent-injector",
+                  },
+                  {
+                      label: "Kubernetes Auth Method",
+                      slug: "phase-3/kubernetes-auth",
+                  },
+                  {
+                      label: "Flujo de Inyección de Secrets",
+                      slug: "phase-3/secret-injection-flow",
+                  },
+                  {
+                      label: "Dev Mode vs Production",
+                      slug: "phase-3/dev-vs-prod",
+                  },
+              ],
+          },
+          {
+              label: "Fase 4 — k3s & Observability Stack",
+              items: [
+                  { label: "k3s Setup", slug: "phase-4/k3s-setup" },
+                  {
+                      label: "Prometheus & Alertmanager",
+                      slug: "phase-4/prometheus-alertmanager",
+                  },
+                  {
+                      label: "Loki & Grafana Alloy",
+                      slug: "phase-4/loki-grafana-alloy",
+                  },
+                  {
+                      label: "Grafana Dashboards",
+                      slug: "phase-4/grafana-dashboards",
+                  },
+                  { label: "n8n Deployment", slug: "phase-4/n8n-deployment" },
+              ],
+          },
+          {
+              label: "Fase 5 — Incident Automation (n8n + LLM)",
+              items: [
+                  {
+                      label: "OpenCode Go API Setup",
+                      slug: "phase-5/opencode-go-api",
+                  },
+                  {
+                      label: "Workflow 1: Incident Response",
+                      slug: "phase-5/workflow-1-incident-response",
+                  },
+                  {
+                      label: "Workflow 2: Log Analysis",
+                      slug: "phase-5/workflow-2-log-analysis",
+                  },
+                  {
+                      label: "Workflow 3: Incident Simulation",
+                      slug: "phase-5/workflow-3-incident-simulation",
+                  },
+              ],
+          },
+          {
+              label: "Fase 6 — CI/CD con Jenkins",
+              items: [
+                  {
+                      label: "Jenkins on Kubernetes",
+                      slug: "phase-6/jenkins-on-k8s",
+                  },
+                  {
+                      label: "Agentes Dinámicos",
+                      slug: "phase-6/dynamic-agents",
+                  },
+                  { label: "Pipeline Setup", slug: "phase-6/pipeline-setup" },
+                  {
+                      label: "Jenkins vs GitHub Actions",
+                      slug: "phase-6/jenkins-vs-gh-actions",
+                  },
+              ],
+          },
+          {
+              label: "Fase 7 — GitOps con ArgoCD",
+              items: [
+                  { label: "ArgoCD Overview", slug: "phase-7/argocd-overview" },
+                  { label: "App of Apps Pattern", slug: "phase-7/app-of-apps" },
+                  {
+                      label: "Drift Detection Demo",
+                      slug: "phase-7/drift-detection",
+                  },
+              ],
+          },
+          {
+              label: "Fase 8 — Seguridad para Producción",
+              items: [
+                  { label: "Fail2Ban", slug: "phase-8/fail2ban" },
+                  {
+                      label: "Checklist de Hardening",
+                      slug: "phase-8/hardening-checklist",
+                  },
+              ],
+          },
+          {
+              label: "Fase 9 — Migración a Oracle Cloud",
+              items: [
+                  {
+                      label: "Arquitectura (Bastion + k3s)",
+                      slug: "phase-9/architecture",
+                  },
+                  {
+                      label: "OpenTofu OCI Provider",
+                      slug: "phase-9/opentofu-oci",
+                  },
+                  {
+                      label: "OCI Vault vs HashiCorp Vault",
+                      slug: "phase-9/oci-vault-vs-hashicorp",
+                  },
+                  {
+                      label: "MinIO → OCI Object Storage",
+                      slug: "phase-9/minio-to-oci",
+                  },
+                  { label: "Lab vs Production", slug: "phase-9/lab-vs-prod" },
+              ],
+          },
+          {
+              label: "Fase 10 — SLO/SLI & Documentación Final",
+              items: [
+                  {
+                      label: "Definiciones de SLI",
+                      slug: "phase-10/sli-definitions",
+                  },
+                  {
+                      label: "SLO Objectives & Error Budgets",
+                      slug: "phase-10/slo-objectives",
+                  },
+                  {
+                      label: "Grafana SLO Dashboard",
+                      slug: "phase-10/grafana-slo-dashboard",
+                  },
+              ],
+          },
+          {
+              label: "Referencia",
+              items: [
+                  {
+                      label: "Lecciones Aprendidas",
+                      slug: "reference/lessons-learned",
+                  },
+                  {
+                      label: "Recursos & Links",
+                      slug: "reference/resources-links",
+                  },
+              ],
+          },
+      ];
+
+function isActive(slug: string): boolean {
+    return currentPath === `${prefix}/aiops-lab/${slug}`;
+}
+
+const t = isEnglish
+    ? {
+          guides: "Guides",
+          collapse: "Collapse sidebar",
+          expand: "Expand sidebar",
+          toggle: "Toggle sidebar",
+          langLabel: "Language",
+      }
+    : {
+          guides: "Guías",
+          collapse: "Colapsar sidebar",
+          expand: "Expandir sidebar",
+          toggle: "Alternar sidebar",
+          langLabel: "Idioma",
+      };
+
+const otherPath = isEnglish
+    ? currentPath.replace(/^\/en/, "") || "/"
+    : `/en${currentPath}`;
+---
+
+<!doctype html>
+<html lang={lang}>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" type="image/svg+xml" href={faviconHref} />
+        <meta name="generator" content={Astro.generator} />
+        <meta name="description" content={description} />
+        <title>{title}</title>
+        <ClientRouter />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap"
+        />
+    </head>
+    <body>
+        <div class="docs-layout">
+            <!-- Sidebar -->
+            <aside class="docs-sidebar" id="docsSidebar" transition:persist>
+                <button
+                    class="sidebar-collapse-btn"
+                    id="sidebarCollapse"
+                    aria-label={t.collapse}
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"></path></svg
+                    >
+                </button>
+                <div class="sidebar-header">
+                    <a href="/" class="sidebar-back">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            ><path d="M19 12H5M12 19l-7-7 7-7"></path></svg
+                        >
+                        <span>Portfolio</span>
+                    </a>
+                    <div class="sidebar-brand">
+                        <div class="sidebar-brand__logo">
+                            <img
+                                src="/tech-icons/rockylinux.svg"
+                                alt=""
+                                width="20"
+                                height="20"
+                            />
+                        </div>
+                        <div class="sidebar-brand__text">
+                            <div class="sidebar-brand__title">
+                                ITOps Automation Lab
+                            </div>
+                            <div class="sidebar-brand__subtitle">
+                                · AI-Powered
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Language toggle hidden temporarily */
+                    /*
+                    <div class="sidebar-lang">
+                        <span class="sidebar-lang__label">{t.langLabel}</span>
+                        <div class="sidebar-lang__toggle">
+                            {
+                                isEnglish ? (
+                                    <>
+                                        <a
+                                            href={otherPath}
+                                            class="sidebar-lang__btn"
+                                        >
+                                            ES
+                                        </a>
+                                        <span class="sidebar-lang__btn sidebar-lang__btn--active">
+                                            EN
+                                        </span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span class="sidebar-lang__btn sidebar-lang__btn--active">
+                                            ES
+                                        </span>
+                                        <a
+                                            href={otherPath}
+                                            class="sidebar-lang__btn"
+                                        >
+                                            EN
+                                        </a>
+                                    </>
+                                )
+                            }
+                        </div>
+                    </div>
+                    */}
+                </div>
+
+                <div class="sidebar-wip">
+                    <span class="sidebar-wip__title">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Fase 9 · WIP
+                    </span>
+                    <span class="sidebar-wip__sub">Sin VMs Ampere disponibles en Oracle Cloud por el momento.</span>
+                </div>
+
+                <nav class="sidebar-nav" aria-label="Docs navigation">
+                    <a
+                        href={`${prefix}/aiops-lab/`}
+                        class={`sidebar-overview ${
+                            currentPath === `${prefix}/aiops-lab/` ||
+                            currentPath === `${prefix}/aiops-lab`
+                                ? "sidebar-overview--active"
+                                : ""
+                        }`}
+                    >
+                        Overview
+                    </a>
+
+                    {
+                        navGroups.map((group, i) => {
+                            const hasActive = group.items.some((item: { slug: string }) => isActive(item.slug));
+                            return (
+                            <div
+                                class={`sidebar-group${hasActive ? " sidebar-group--expanded" : " sidebar-group--collapsed"}`}
+                            >
+                                <div class="sidebar-group__label">
+                                    <svg
+                                        class="sidebar-group__chevron"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <polyline points="6 9 12 15 18 9" />
+                                    </svg>
+                                    {
+                                        groupIconSrc[i] ? (
+                                            <span class="sidebar-group__icon">
+                                                <img
+                                                    src={groupIconSrc[i]}
+                                                    alt=""
+                                                    width="14"
+                                                    height="14"
+                                                    class="sidebar-group__icon-img"
+                                                />
+                                            </span>
+                                        ) : groupIconFallback[i] ? (
+                                            <span
+                                                class="sidebar-group__icon"
+                                                set:html={groupIconFallback[i]}
+                                            />
+                                        ) : null
+                                    }
+                                    {group.label}
+                                </div>
+                                <div
+                                    class="sidebar-group__items"
+                                    style={hasActive ? "max-height:none" : "max-height:0px"}
+                                >
+                                    <ul class="sidebar-list" role="list">
+                                        {group.items.map((item) => (
+                                            <li class="sidebar-item">
+                                                <a
+                                                    href={`${prefix}/aiops-lab/${item.slug}`}
+                                                    class={`sidebar-link ${
+                                                        isActive(item.slug)
+                                                            ? "sidebar-link--active"
+                                                            : ""
+                                                    }`}
+                                                >
+                                                    {item.label}
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                            );
+                        })
+                    }
+                </nav>
+
+                <div class="sidebar-footer">
+                    <a
+                        href="https://github.com/agusm2002/rocky-linux-aiops-lab"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="sidebar-gh"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            ><path
+                                d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+                            ></path></svg
+                        >
+                        GitHub
+                    </a>
+                </div>
+            </aside>
+
+            <!-- Expand button (desktop collapsed) -->
+            <button
+                class="sidebar-expand-btn"
+                id="sidebarExpand"
+                aria-label={t.expand}
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><path d="M13 17l5-5-5-5M6 17l5-5-5-5"></path></svg
+                >
+            </button>
+
+            <!-- Mobile toggle -->
+            <button
+                class="sidebar-toggle"
+                id="sidebarToggle"
+                aria-label={t.toggle}
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    ><line x1="3" y1="12" x2="21" y2="12"></line><line
+                        x1="3"
+                        y1="6"
+                        x2="21"
+                        y2="6"></line><line x1="3" y1="18" x2="21" y2="18"
+                    ></line></svg
+                >
+            </button>
+
+            <!-- Overlay for mobile -->
+            <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+            <!-- Main content -->
+            <main class="docs-main">
+                <slot />
+
+                {
+                    (Astro.props.prev || Astro.props.next) && (
+                        <nav class="page-nav">
+                            {Astro.props.prev ? (
+                                <a
+                                    href={Astro.props.prev.href}
+                                    class="page-nav__link page-nav__prev"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <polyline points="15 18 9 12 15 6" />
+                                    </svg>
+                                    {Astro.props.prev.label}
+                                </a>
+                            ) : (
+                                <span />
+                            )}
+                            {Astro.props.next ? (
+                                <a
+                                    href={Astro.props.next.href}
+                                    class="page-nav__link page-nav__next"
+                                >
+                                    {Astro.props.next.label}
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <polyline points="9 18 15 12 9 6" />
+                                    </svg>
+                                </a>
+                            ) : (
+                                <span />
+                            )}
+                        </nav>
+                    )
+                }
+            </main>
+
+            <!-- Table of Contents (right side, desktop only) -->
+            <aside class="docs-toc" id="docsToc">
+                <div class="docs-toc__title">On this page</div>
+                <nav class="docs-toc__nav" id="docsTocNav"></nav>
+            </aside>
+        </div>
+
+        <script>
+            function initSidebar() {
+                const toggle = document.getElementById("sidebarToggle");
+                const sidebar = document.getElementById("docsSidebar");
+                const overlay = document.getElementById("sidebarOverlay");
+                const collapseBtn =
+                    document.getElementById("sidebarCollapse");
+                const expandBtn = document.getElementById("sidebarExpand");
+                const layout = document.querySelector(".docs-layout");
+
+                // Mobile toggle
+                function openSidebar() {
+                    sidebar?.classList.add("docs-sidebar--open");
+                    overlay?.classList.add("sidebar-overlay--visible");
+                    document.body.style.overflow = "hidden";
+                }
+                function closeSidebar() {
+                    sidebar?.classList.remove("docs-sidebar--open");
+                    overlay?.classList.remove("sidebar-overlay--visible");
+                    document.body.style.overflow = "";
+                }
+                toggle?.addEventListener("click", () => {
+                    sidebar?.classList.contains("docs-sidebar--open")
+                        ? closeSidebar()
+                        : openSidebar();
+                });
+                overlay?.addEventListener("click", closeSidebar);
+
+                // Desktop collapse
+                collapseBtn?.addEventListener("click", () => {
+                    layout?.classList.add("docs-layout--collapsed");
+                    localStorage.setItem("docsSidebarCollapsed", "true");
+                });
+                expandBtn?.addEventListener("click", () => {
+                    layout?.classList.remove("docs-layout--collapsed");
+                    localStorage.setItem("docsSidebarCollapsed", "false");
+                });
+                if (
+                    localStorage.getItem("docsSidebarCollapsed") === "true" &&
+                    window.innerWidth > 900
+                ) {
+                    layout?.classList.add("docs-layout--collapsed");
+                }
+
+                // ── Collapsable groups ──
+                sidebar?.querySelectorAll(".sidebar-group").forEach((group) => {
+                    const label = group.querySelector(
+                        ".sidebar-group__label",
+                    );
+                    const itemsContainer = group.querySelector(
+                        ".sidebar-group__items",
+                    );
+                    if (!label || !itemsContainer) return;
+                    // guard: skip if already initialised (transition:persist re-runs initSidebar)
+                    if ((label as HTMLElement).dataset.groupInit) return;
+                    (label as HTMLElement).dataset.groupInit = "1";
+
+                    const isPreExpanded =
+                        group.classList.contains("sidebar-group--expanded");
+                    if (!isPreExpanded) {
+                        itemsContainer.style.maxHeight = "0px";
+                        group.classList.add("sidebar-group--collapsed");
+                    }
+
+                    label.addEventListener("click", () => {
+                        const isCollapsed = group.classList.toggle(
+                            "sidebar-group--collapsed",
+                        );
+                        if (!isCollapsed) {
+                            itemsContainer.style.maxHeight =
+                                itemsContainer.scrollHeight + "px";
+                        } else {
+                            itemsContainer.style.maxHeight =
+                                itemsContainer.scrollHeight + "px";
+                            requestAnimationFrame(() => {
+                                itemsContainer.style.maxHeight = "0px";
+                            });
+                        }
+                    });
+                });
+
+                // ── Table of Contents ──
+                const toc = document.getElementById("docsToc");
+                const tocNav = document.getElementById("docsTocNav");
+                const main = document.querySelector(".docs-main");
+                if (!toc || !tocNav || !main) return;
+
+                // Clear previous TOC entries (important for view transitions)
+                tocNav.innerHTML = "";
+
+                const headings = main.querySelectorAll("h2");
+                if (headings.length === 0) {
+                    toc.style.display = "none";
+                    return;
+                }
+                toc.style.display = "block";
+
+                headings.forEach((h, i) => {
+                    const id = h.id || `section-${i}`;
+                    if (!h.id) h.id = id;
+                    const a = document.createElement("a");
+                    a.href = `#${id}`;
+                    a.className = "docs-toc__link";
+                    a.textContent = h.textContent;
+                    a.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        const rect = h.getBoundingClientRect();
+                        const target = Math.max(
+                            0,
+                            window.scrollY +
+                                rect.top -
+                                window.innerHeight / 2 +
+                                rect.height / 2,
+                        );
+                        window.scrollTo({
+                            top: target,
+                            behavior: "smooth",
+                        });
+                        history.pushState(null, "", `#${id}`);
+                        setTimeout(updateActive, 260);
+                    });
+                    tocNav.appendChild(a);
+                });
+
+                const links = tocNav.querySelectorAll(".docs-toc__link");
+                function throttle(fn, wait) {
+                    let last = 0;
+                    return (...args) => {
+                        const now = Date.now();
+                        if (now - last > wait) {
+                            last = now;
+                            fn(...args);
+                        }
+                    };
+                }
+                function updateActive() {
+                    const offset = Math.max(
+                        120,
+                        window.innerHeight * 0.25,
+                    );
+                    if (
+                        window.innerHeight + window.scrollY >=
+                        document.body.scrollHeight - 4
+                    ) {
+                        links.forEach((l) =>
+                            l.classList.remove("docs-toc__link--active"),
+                        );
+                        if (links[headings.length - 1])
+                            links[headings.length - 1].classList.add(
+                                "docs-toc__link--active",
+                            );
+                        return;
+                    }
+                    let closestIndex = 0;
+                    let closestDist = Infinity;
+                    for (let i = 0; i < headings.length; i++) {
+                        const rect = headings[i].getBoundingClientRect();
+                        const dist = Math.abs(rect.top - offset);
+                        if (dist < closestDist) {
+                            closestDist = dist;
+                            closestIndex = i;
+                        }
+                    }
+                    links.forEach((l) =>
+                        l.classList.remove("docs-toc__link--active"),
+                    );
+                    if (links[closestIndex])
+                        links[closestIndex].classList.add(
+                            "docs-toc__link--active",
+                        );
+                }
+                window.addEventListener(
+                    "scroll",
+                    throttle(updateActive, 100),
+                );
+                window.addEventListener("resize", updateActive);
+                setTimeout(updateActive, 200);
+            }
+
+            // Called on initial load AND after each ClientRouter view transition
+            document.addEventListener("astro:page-load", initSidebar);
+
+            // Desktop collapse resize handler (guard against duplicate on ClientRouter re-run)
+            if (!window.__sidebarResizeSet) {
+                window.__sidebarResizeSet = true;
+                window.addEventListener("resize", () => {
+                    const layout =
+                        document.querySelector(".docs-layout");
+                    if (!layout) return;
+                    if (window.innerWidth <= 900) {
+                        layout.classList.remove("docs-layout--collapsed");
+                    } else if (
+                        localStorage.getItem("docsSidebarCollapsed") === "true"
+                    ) {
+                        layout.classList.add("docs-layout--collapsed");
+                    }
+                });
+            }
+        </script>
+
+        <style is:global>
+            :root {
+                --bg: #0d0d0d;
+                --surface: #111111;
+                --surface-2: #161616;
+                --green-50: #f5f5f5;
+                --green-100: #e8e8e8;
+                --green-300: #ccc;
+                --green-400: #aaa;
+                --green-500: #888;
+                --green-600: #666;
+                --green-700: #555;
+                --green-900: #333;
+                --text: #d4d4d4;
+                --text-muted: #888;
+                --text-dim: #555;
+                --border: rgba(255, 255, 255, 0.07);
+                --border-hover: rgba(255, 255, 255, 0.14);
+                --font-display: "Space Grotesk", system-ui, sans-serif;
+                --font-body: "Inter", system-ui, sans-serif;
+                --font-mono: "JetBrains Mono", "Fira Code", monospace;
+                --text-2xs: 0.625rem;
+                --text-xs: 0.6875rem;
+                --text-sm: 0.75rem;
+                --text-base: 0.875rem;
+                --text-md: 0.9375rem;
+                --text-lg: 1rem;
+                --text-xl: 1.125rem;
+                --text-2xl: 1.25rem;
+                --text-3xl: 1.5rem;
+            }
+
+            html {
+                overflow-x: hidden;
+            }
+
+            body {
+                background-color: var(--bg);
+                color: var(--text);
+                font-family: var(--font-body);
+                font-size: 1rem;
+                line-height: 1.6;
+                overflow-x: hidden;
+            }
+
+            ::selection {
+                background: rgba(255, 255, 255, 0.15);
+                color: #fff;
+            }
+
+            ::-webkit-scrollbar {
+                width: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: var(--bg);
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #444;
+                border-radius: 4px;
+                border: 2px solid var(--bg);
+            }
+
+            h1,
+            h2,
+            h3,
+            h4 {
+                font-family: var(--font-display);
+                line-height: 1.15;
+            }
+
+            a {
+                color: inherit;
+                text-decoration: none;
+            }
+        </style>
+        <style is:global>
+            .docs-layout {
+                display: flex;
+                min-height: 100vh;
+                background: var(--bg);
+                color: var(--text);
+                font-family: var(--font-body);
+            }
+
+            /* Sidebar */
+            .docs-sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 260px;
+                height: 100vh;
+                background: var(--surface);
+                border-right: 1px solid var(--border);
+                display: flex;
+                flex-direction: column;
+                z-index: 100;
+                overflow-y: auto;
+            }
+
+            .sidebar-header {
+                padding: 1.25rem 1.25rem 1rem;
+                border-bottom: 1px solid var(--border);
+                position: relative;
+            }
+
+            .sidebar-header::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: radial-gradient(
+                    ellipse 120% 80% at 50% 0%,
+                    rgba(255, 255, 255, 0.03) 0%,
+                    transparent 70%
+                );
+                pointer-events: none;
+            }
+
+            .sidebar-header::after {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 1rem;
+                right: 1rem;
+                height: 1px;
+                background: linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(255, 255, 255, 0.08),
+                    transparent
+                );
+                pointer-events: none;
+            }
+
+            .sidebar-back {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.3rem;
+                font-family: var(--font-mono);
+                font-size: var(--text-2xs);
+                color: var(--green-600);
+                margin-bottom: 0.85rem;
+                transition: color 0.2s;
+                padding: 0.1rem 0.35rem 0.1rem 0.15rem;
+                border-radius: 0.25rem;
+            }
+
+            .sidebar-back:hover {
+                color: var(--green-300);
+                background: rgba(255, 255, 255, 0.03);
+            }
+
+            .sidebar-brand {
+                display: flex;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+
+            .sidebar-brand__logo {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                width: 34px;
+                height: 34px;
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid var(--border);
+                border-radius: 0.5rem;
+                margin-top: 1px;
+            }
+
+            .sidebar-brand__logo img {
+                filter: brightness(0) invert(1);
+                opacity: 0.9;
+                width: 20px;
+                height: 20px;
+            }
+
+            .sidebar-brand__title {
+                font-family: var(--font-display);
+                font-size: var(--text-md);
+                font-weight: 600;
+                color: var(--green-50);
+                line-height: 1.2;
+                letter-spacing: -0.01em;
+            }
+
+            .sidebar-brand__subtitle {
+                display: inline-flex;
+                align-items: center;
+                font-family: var(--font-mono);
+                font-size: var(--text-2xs);
+                color: var(--text-dim);
+                letter-spacing: 0.03em;
+                margin-top: 0.15rem;
+                padding: 0.1rem 0.4rem;
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+                border-radius: 999px;
+            }
+
+            .sidebar-wip {
+                display: flex;
+                flex-direction: column;
+                gap: 0.3rem;
+                margin: 0.85rem;
+                padding: 0.5rem 0.7rem;
+                color: #fde68a;
+                background: rgba(253, 224, 71, 0.08);
+                border: 1px solid rgba(253, 224, 71, 0.15);
+                border-radius: 0.4rem;
+                font-family: var(--font-mono);
+                font-size: var(--text-2xs);
+                line-height: 1.35;
+            }
+            .sidebar-wip__title {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                font-weight: 500;
+            }
+            .sidebar-wip__sub {
+                font-weight: 400;
+                opacity: 0.75;
+                font-size: 10px;
+            }
+            .sidebar-nav {
+                flex: 1;
+                padding: 0 0.85rem 1.25rem;
+                overflow-y: auto;
+            }
+
+            .sidebar-group {
+                margin-top: 0.85rem;
+            }
+
+            .sidebar-overview {
+                display: block;
+                font-family: var(--font-mono);
+                font-size: var(--text-xs);
+                color: var(--green-400);
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                padding: 0.35rem 0.75rem;
+                margin-bottom: 0.5rem;
+                transition: color 0.15s;
+            }
+            .sidebar-overview:hover {
+                color: var(--green-100);
+            }
+            .sidebar-overview--active {
+                color: var(--green-50);
+                font-weight: 500;
+            }
+            .sidebar-group__label {
+                font-family: var(--font-mono);
+                font-size: var(--text-xs);
+                color: var(--green-400);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                padding: 0.35rem 0.75rem;
+                margin-bottom: 0.25rem;
+                line-height: 1.4;
+                cursor: pointer;
+                display: flex;
+                align-items: flex-start;
+                gap: 0.4rem;
+                user-select: none;
+                transition: color 0.15s;
+                contain: layout style;
+            }
+            .sidebar-group__label:hover {
+                color: var(--green-100);
+            }
+            .sidebar-group__icon {
+                flex-shrink: 0;
+                display: inline-flex;
+                align-items: center;
+                opacity: 0.55;
+                transition: opacity 0.15s;
+            }
+            .sidebar-group__icon-img {
+                filter: brightness(0) invert(1);
+                opacity: 0.55;
+                transition: opacity 0.15s;
+            }
+            .sidebar-group__label:hover .sidebar-group__icon,
+            .sidebar-group__label:hover .sidebar-group__icon-img {
+                opacity: 0.85;
+            }
+            .sidebar-group__chevron {
+                flex-shrink: 0;
+                width: 10px;
+                height: 10px;
+                transition: transform 0.2s;
+                color: var(--text-dim);
+            }
+            .sidebar-group--collapsed .sidebar-group__chevron {
+                transform: rotate(-90deg);
+            }
+            .sidebar-group__items {
+                overflow: hidden;
+                transition:
+                    max-height 0.25s ease,
+                    opacity 0.2s;
+                will-change: max-height;
+                backface-visibility: hidden;
+            }
+            .sidebar-group--collapsed .sidebar-group__items {
+                max-height: 0 !important;
+                opacity: 0;
+            }
+
+            .sidebar-section {
+                font-family: var(--font-mono);
+                font-size: var(--text-2xs);
+                color: var(--text-dim);
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                padding: 0 0.75rem;
+                margin-bottom: 0.5rem;
+            }
+
+            .sidebar-list {
+                list-style: none;
+            }
+
+            .sidebar-item {
+                margin-bottom: 0.15rem;
+            }
+
+            .sidebar-link {
+                display: block;
+                padding: 0.5rem 0.75rem;
+                border-radius: 0.4rem;
+                font-family: var(--font-mono);
+                font-size: var(--text-sm);
+                color: var(--green-300);
+                letter-spacing: 0.01em;
+                transition:
+                    background 0.15s,
+                    color 0.15s;
+            }
+
+            .sidebar-link:hover {
+                background: rgba(255, 255, 255, 0.04);
+                color: var(--green-50);
+            }
+
+            .sidebar-link--active {
+                background: rgba(255, 255, 255, 0.06);
+                color: var(--green-50);
+                font-weight: 500;
+            }
+
+            .sidebar-footer {
+                padding: 1rem 1.25rem;
+                border-top: 1px solid var(--border);
+            }
+
+            .sidebar-gh {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-family: var(--font-mono);
+                font-size: var(--text-xs);
+                color: var(--text-dim);
+                transition: color 0.2s;
+            }
+
+            .sidebar-gh:hover {
+                color: var(--green-300);
+            }
+
+            /* Collapse button (inside sidebar) */
+            .sidebar-collapse-btn {
+                position: absolute;
+                top: 0.85rem;
+                right: 0.85rem;
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid var(--border);
+                border-radius: 0.35rem;
+                color: var(--text-dim);
+                cursor: pointer;
+                transition:
+                    color 0.2s,
+                    background 0.2s;
+                z-index: 10;
+            }
+
+            .sidebar-collapse-btn:hover {
+                color: var(--green-50);
+                background: rgba(255, 255, 255, 0.08);
+            }
+
+            /* Expand button (when collapsed) */
+            .sidebar-expand-btn {
+                display: none;
+                position: fixed;
+                top: 1rem;
+                left: 1rem;
+                z-index: 200;
+                width: 32px;
+                height: 32px;
+                align-items: center;
+                justify-content: center;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 0.4rem;
+                color: var(--green-50);
+                cursor: pointer;
+                transition:
+                    background 0.2s,
+                    border-color 0.2s;
+            }
+
+            .sidebar-expand-btn:hover {
+                background: rgba(255, 255, 255, 0.06);
+                border-color: var(--border-hover);
+            }
+
+            /* Toggle */
+            .sidebar-toggle {
+                display: none;
+                position: fixed;
+                top: 1rem;
+                left: 1rem;
+                z-index: 200;
+                width: 40px;
+                height: 40px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 0.4rem;
+                color: var(--green-50);
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 90;
+            }
+
+            /* Main content */
+            .docs-main {
+                margin-left: 260px;
+                flex: 1;
+                min-height: 100vh;
+                padding: 2.5rem 3rem;
+                max-width: 800px;
+                transition: margin-left 0.25s ease;
+            }
+
+            /* Collapsed state (desktop) */
+            .docs-layout--collapsed .docs-sidebar {
+                transform: translateX(-100%);
+            }
+
+            .docs-layout--collapsed .docs-main {
+                margin-left: 0;
+            }
+
+            .docs-layout--collapsed .sidebar-expand-btn {
+                display: flex;
+            }
+
+            .docs-layout--collapsed .sidebar-collapse-btn {
+                display: none;
+            }
+
+            /* Responsive */
+            @media (max-width: 900px) {
+                .docs-sidebar {
+                    transform: translateX(-100%);
+                    transition: transform 0.25s ease;
+                }
+
+                .docs-sidebar--open {
+                    transform: translateX(0);
+                }
+
+                .sidebar-toggle {
+                    display: flex;
+                }
+
+                .sidebar-expand-btn {
+                    display: none !important;
+                }
+
+                .sidebar-overlay--visible {
+                    display: block;
+                }
+
+                .docs-main {
+                    margin-left: 0;
+                    padding: 4rem 1.5rem 2rem;
+                    max-width: none;
+                }
+            }
+
+            /* Page nav (prev / next) */
+            .page-nav {
+                display: flex;
+                justify-content: space-between;
+                gap: 1rem;
+                margin-top: 3rem;
+                padding-top: 1.5rem;
+                border-top: 1px solid var(--border);
+            }
+            .page-nav__link {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-family: var(--font-mono);
+                font-size: var(--text-xs);
+                color: var(--text-muted);
+                padding: 0.5rem 0.75rem;
+                border: 1px solid var(--border);
+                border-radius: 0.4rem;
+                background: rgba(255, 255, 255, 0.02);
+                transition:
+                    color 0.15s,
+                    background 0.15s,
+                    border-color 0.15s;
+                max-width: 48%;
+            }
+            .page-nav__link:hover {
+                color: var(--green-50);
+                background: rgba(255, 255, 255, 0.05);
+                border-color: var(--border-hover);
+            }
+            .page-nav__link svg {
+                flex-shrink: 0;
+                width: 12px;
+                height: 12px;
+            }
+            .page-nav__next {
+                text-align: right;
+            }
+
+            /* Table of Contents (right side) */
+            .docs-toc {
+                display: none;
+                position: fixed;
+                top: 6rem;
+                right: max(1.5rem, calc((100vw - 1100px) / 2));
+                width: 220px;
+                max-height: calc(100vh - 8rem);
+                overflow-y: auto;
+                z-index: 50;
+            }
+            .docs-toc__title {
+                font-family: var(--font-mono);
+                font-size: var(--text-xs);
+                color: var(--text-dim);
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                margin-bottom: 0.75rem;
+            }
+            .docs-toc__link {
+                display: block;
+                font-family: var(--font-mono);
+                font-size: var(--text-sm);
+                color: var(--text-dim);
+                padding: 0.35rem 0;
+                border-left: 2px solid rgba(255, 255, 255, 0.06);
+                padding-left: 0.7rem;
+                transition:
+                    color 0.15s,
+                    border-color 0.15s;
+                line-height: 1.4;
+            }
+            .docs-toc__link:hover {
+                color: var(--green-50);
+                border-left-color: rgba(255, 255, 255, 0.2);
+            }
+            .docs-toc__link--active {
+                color: var(--green-50);
+                border-left-color: var(--green-600);
+                font-weight: 600;
+            }
+
+            /* Indent subheadings (h3) and slightly smaller font */
+            .docs-toc__link--h3 {
+                padding-left: 1.1rem;
+                font-size: var(--text-xs);
+                color: var(--text-dim);
+            }
+
+            @media (max-width: 1200px) {
+                .docs-toc {
+                    display: none !important;
+                }
+            }
+
+            /* Language switcher (inside sidebar header) */
+            .sidebar-lang {
+                padding-top: 0.85rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 0.5rem;
+            }
+            .sidebar-lang__label {
+                font-family: var(--font-mono);
+                font-size: var(--text-2xs);
+                color: var(--green-600);
+                letter-spacing: 0.04em;
+                white-space: nowrap;
+            }
+            .sidebar-lang__toggle {
+                display: flex;
+                gap: 0;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.06);
+                border-radius: 999px;
+                padding: 2px;
+            }
+            .sidebar-lang__btn {
+                font-family: var(--font-mono);
+                font-size: var(--text-2xs);
+                color: var(--text-dim);
+                padding: 0.2rem 0.55rem;
+                border-radius: 999px;
+                border: none;
+                background: transparent;
+                transition:
+                    color 0.15s,
+                    background 0.15s;
+                line-height: 1.3;
+            }
+            .sidebar-lang__btn:hover {
+                color: var(--green-200);
+                background: rgba(255, 255, 255, 0.04);
+            }
+            .sidebar-lang__btn--active {
+                color: var(--green-50);
+                background: rgba(255, 255, 255, 0.1);
+                font-weight: 500;
+                cursor: default;
+            }
+            .sidebar-lang__btn--active:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+        </style>
+    </body>
+</html>

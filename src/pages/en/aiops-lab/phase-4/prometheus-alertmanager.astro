@@ -1,0 +1,145 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+const scrapeJobs = [
+    { job: "prometheus", target: "localhost:9090", desc: "Auto-monitoreo de Prometheus. Metricas sobre el propio proceso de recoleccion." },
+    { job: "node-exporter", target: "node-exporter:9100", desc: "Metricas del sistema operativo: CPU, memoria, disco, red. Corre como DaemonSet." },
+    { job: "kube-state-metrics", target: "kube-state-metrics:8080", desc: "Metricas de objetos de Kubernetes: estado de pods, deployments, nodos. No metricas de uso, sino de estado." },
+    { job: "n8n", target: "n8n:5678", desc: "Metricas de n8n: ejecuciones, workflows activos, uso de memoria." },
+    { job: "alertmanager", target: "alertmanager:9093", desc: "Metricas de Alertmanager: alertas activas, silenciadas, tasa de notificaciones." },
+    { job: "jenkins", target: "jenkins:8080", desc: "Metricas de Jenkins: builds, jobs, agentes activos." },
+    { job: "grafana", target: "grafana:3000", desc: "Metricas de Grafana: usuarios activos, dashboards, uso de memoria." },
+];
+
+const alerts = [
+    { name: "PodCrashLooping", expr: "kube_pod_container_status_waiting_reason == 'CrashLoopBackOff'", for: "5m", sev: "critical", desc: "Un pod esta en CrashLoopBackOff. El contenedor arranca y muere repetidamente." },
+    { name: "HighMemoryUsage", expr: "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100 < 15", for: "5m", sev: "warning", desc: "Menos del 15% de memoria disponible en el nodo. Riesgo de OOM kill." },
+    { name: "DiskSpaceLow", expr: "node_filesystem_avail_bytes / node_filesystem_size_bytes * 100 < 20", for: "5m", sev: "warning", desc: "Menos del 20% de disco disponible. Loki y Prometheus consumen storage." },
+    { name: "N8nDown", expr: "up{job='n8n'} == 0", for: "2m", sev: "critical", desc: "n8n no responde. Los workflows de respuesta a incidentes no funcionan." },
+    { name: "GrafanaSLOBreach", expr: "avg_over_time(up{job='grafana'}[30d]) * 100 < 99.9", for: "5m", sev: "warning", desc: "Disponibilidad de Grafana por debajo del SLO de 99.9%." },
+    { name: "HighCPU", expr: "100 - (avg(rate(node_cpu_seconds_total{mode='idle'}[5m])) * 100) > 80", for: "10m", sev: "warning", desc: "CPU del nodo por encima del 80% durante 10 minutos." },
+    { name: "ServiceDown", expr: "up == 0", for: "2m", sev: "critical", desc: "Un servicio esta caido. La label job identifica cual." },
+];
+
+const amRouting = [
+    { label: "severity: critical", action: "Agrupar en lotes de 10s. Si una alerta critica se dispara, todas las que lleguen en los proximos 10s se agrupan en una sola notificacion.", wait: "10s" },
+    { label: "severity: warning", action: "Agrupar en lotes de 30s. Las alertas de warning no requieren respuesta inmediata.", wait: "30s" },
+    { label: "default", action: "Agrupar en lotes de 30s y enviar a n8n via webhook. Incluye send_resolved para notificar cuando la alerta se resuelve.", wait: "30s" },
+];
+---
+
+<DocsLayout
+    title="Prometheus y Alertmanager - ITOps Automation Lab"
+    description="Phase 4 del Rocky Linux ITOps Automation Lab: Prometheus para metricas y Alertmanager para enrutar alertas a n8n — el corazon del observability stack."
+    activePage="prometheus-alertmanager"
+    lang="en"
+    prev={{ label: "k3s Setup", href: "/en/aiops-lab/phase-4/k3s-setup" }}
+    next={{ label: "Loki y Grafana Alloy", href: "/en/aiops-lab/phase-4/loki-grafana-alloy" }}
+>
+    <div class="docs-page">
+        <div class="f4-hero"><div class="f4-hero__top"><div class="f4-hero__badge">Phase 4.2</div><span class="f4-hero__time">Prometheus + Alertmanager</span></div><h1 class="f4-hero__title">Prometheus y Alertmanager<span class="f4-hero__accent"> · Metricas + Alertas</span></h1><p class="f4-hero__subtitle">El corazon del observability stack. Prometheus recolecta metricas de cada componente y evalua reglas de alerta. Alertmanager recibe las alertas disparadas y las enruta a n8n para su procesamiento automatico con LLM.</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">Scrape Jobs</h2></div>
+            <p class="overview-lead">Prometheus recolecta metricas de 7 endpoints via HTTP. Cada 15 segundos, consulta /metrics en cada target y almacena las series temporales en su TSDB con 15 dias de retencion.</p>
+            <div class="scrape-list">
+                {scrapeJobs.map((s) => (<div class="scrape-row"><code class="scrape-row__job">{s.job}</code><code class="scrape-row__target">{s.target}</code><div class="scrape-row__desc">{s.desc}</div></div>))}
+            </div>
+            <div class="info-card"><div class="info-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="info-card__text"><strong>Storage:</strong> Prometheus usa un PVC de 5Gi. Con 7 scrape jobs a 15s y 15 dias de retencion, el uso estimado es de ~2-3Gi — suficiente para el lab.</div></div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">Reglas de Alerta</h2></div>
+            <p class="overview-lead">Siete reglas cubren los escenarios de fallo mas comunes. Cada regla tiene un severity (critical/warning) que Alertmanager usa para decidir la ruta.</p>
+            <div class="alerts-list">
+                {alerts.map((a) => (<div class={`alert-card ${a.sev === 'critical' ? 'alert-card--crit' : ''}`}><div class="alert-card__header"><code class="alert-card__name">{a.name}</code><span class={`alert-card__sev alert-card__sev--${a.sev}`}>{a.sev}</span><span class="alert-card__for">for: {a.for}</span></div><div class="alert-card__expr"><code>{a.expr}</code></div><div class="alert-card__desc">{a.desc}</div></div>))}
+            </div>
+            <p class="overview-text">De estas 7 reglas, 2 disparan el loop de respuesta a incidentes (PodCrashLooping y ServiceDown), 4 monitorean la salud del sistema (HighCPU, HighMemoryUsage, DiskSpaceLow, N8nDown), y 1 monitorea el SLO de Grafana.</p>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">Alertmanager: Enrutamiento a n8n</h2></div>
+            <p class="overview-lead">Alertmanager recibe las alertas de Prometheus y las enruta segun severity. Todas las alertas —criticas y warnings— terminan en el mismo webhook de n8n. La diferencia esta en la agrupacion.</p>
+            <div class="route-list">
+                {amRouting.map((r) => (<div class="route-row"><div class="route-row__label"><code>{r.label}</code><span class="route-row__wait">group_wait: {r.wait}</span></div><div class="route-row__action">{r.action}</div></div>))}
+            </div>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">alertmanager/configmap.yml — receiver n8n</span></div>
+                <pre><code>receivers:
+  - name: n8n-webhook
+    webhook_configs:
+      - url: http://n8n.aiops.svc.cluster.local:5678/webhook/alertmanager
+        send_resolved: true
+
+route:
+  receiver: n8n-webhook
+  routes:
+    - match:
+        severity: critical
+      group_wait: 10s
+      receiver: n8n-webhook</code></pre>
+            </div>
+            <p class="overview-text"><code>send_resolved: true</code> es clave: cuando una alerta se resuelve, Alertmanager envia una segunda notificacion a n8n con status 'resolved'. El workflow de n8n puede usar esto para cerrar incidentes o notificar que el sistema se recupero.</p>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Siguiente: Loki y Grafana Alloy</h3><p class="cta-card__desc">Las metricas cubren el QUE. Los logs cubren el POR QUE. Loki almacena los logs del cluster y Alloy los recolecta de cada pod.</p></div><a href="/en/aiops-lab/phase-4/loki-grafana-alloy" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Loki + Alloy</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f4-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f4-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f4-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f4-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f4-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f4-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f4-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .overview-text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.65; margin-bottom: 1rem; }
+    .overview-text code { font-family: var(--font-mono); font-size: var(--text-xs); background: rgba(255,255,255,0.06); padding: 0.1rem 0.35rem; border-radius: 0.25rem; color: var(--green-300); }
+    .scrape-list { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 1rem; }
+    .scrape-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.75rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.4rem; font-size: var(--text-xs); }
+    .scrape-row__job { font-family: var(--font-mono); font-weight: 600; color: var(--green-300); min-width: 100px; background: none; padding: 0; }
+    .scrape-row__target { font-family: var(--font-mono); color: var(--text-dim); min-width: 140px; background: none; padding: 0; }
+    .scrape-row__desc { color: var(--text-muted); line-height: 1.4; }
+    .alerts-list { display: flex; flex-direction: column; gap: 0.35rem; }
+    .alert-card { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.55rem 0.8rem; }
+    .alert-card--crit { border-color: rgba(239,68,68,0.15); background: rgba(239,68,68,0.02); }
+    .alert-card__header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+    .alert-card__name { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600; color: var(--green-300); background: none; padding: 0; }
+    .alert-card__sev { font-family: var(--font-mono); font-size: var(--text-4xs); padding: 0.1rem 0.3rem; border-radius: 0.2rem; border: 1px solid; }
+    .alert-card__sev--critical { color: #ef4444; border-color: rgba(239,68,68,0.2); background: rgba(239,68,68,0.06); }
+    .alert-card__sev--warning { color: #eab308; border-color: rgba(234,179,8,0.2); background: rgba(234,179,8,0.06); }
+    .alert-card__for { font-family: var(--font-mono); font-size: var(--text-4xs); color: var(--text-dim); margin-left: auto; }
+    .alert-card__expr { margin-bottom: 0.2rem; }
+    .alert-card__expr code { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); background: rgba(255,255,255,0.04); padding: 0.1rem 0.3rem; border-radius: 0.2rem; }
+    .alert-card__desc { font-size: var(--text-xs); color: var(--text-muted); line-height: 1.4; }
+    .route-list { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
+    .route-row { padding: 0.55rem 0.8rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; }
+    .route-row__label { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; }
+    .route-row__label code { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600; color: var(--green-300); background: none; padding: 0; }
+    .route-row__wait { font-family: var(--font-mono); font-size: var(--text-4xs); color: var(--text-dim); }
+    .route-row__action { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.45; }
+    .info-card { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .code-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .code-block__header { display: flex; align-items: center; padding: 0.45rem 0.85rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .code-block__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .code-block pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .code-block code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } .scrape-row { flex-wrap: wrap; } }
+</style>

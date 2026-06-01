@@ -1,0 +1,1013 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+// Helpers to escape Jinja2/Ansible {{ }} in code blocks
+const O = "{{";
+const C = "}}";
+
+const packages = [
+    { name: "vim", desc: "Terminal text editor — edit configs without leaving the VM" },
+    { name: "curl", desc: "Data transfer — download binaries, test APIs" },
+    { name: "wget", desc: "File downloading — alternative to curl, useful for scripts" },
+    { name: "git", desc: "Version control — clone the project repo" },
+    { name: "net-tools", desc: "Legacy network utilities — netstat, ifconfig, route" },
+    { name: "htop", desc: "Interactive process monitor — more readable than top" },
+    { name: "bash-completion", desc: "Bash autocompletion — terminal productivity" },
+    { name: "glibc-langpack-es", desc: "Locale es_AR.utf8 — dates and messages in Spanish" },
+];
+
+const hardeningRoles = [
+    {
+        name: "system-base",
+        icon: "rockylinux.svg",
+        phase: "1.1",
+        desc: "Full system update, essential packages, timezone, and locale.",
+    },
+    {
+        name: "firewalld",
+        icon: "rockylinux.svg",
+        phase: "1.2",
+        desc: "Zone-based firewall. Custom SSH port (2222), k3s API (6443), HTTP/HTTPS.",
+    },
+    {
+        name: "selinux",
+        icon: "rockylinux.svg",
+        phase: "1.3",
+        desc: "SELinux in enforcing mode with k3s booleans. Never disabled.",
+    },
+    {
+        name: "ssh-hardening",
+        icon: "rockylinux.svg",
+        phase: "1.4",
+        desc: "No root login, no password auth, custom port, limited MaxAuthTries.",
+    },
+    {
+        name: "fail2ban",
+        icon: "rockylinux.svg",
+        phase: "1.5",
+        desc: "SSH brute force protection — auto-ban after 5 failed attempts.",
+    },
+    {
+        name: "dnf-automatic",
+        icon: "rockylinux.svg",
+        phase: "1.6",
+        desc: "Automatic security updates — critical patches only, no reboot.",
+    },
+];
+
+const playbookStructure = [
+    { file: "ansible.cfg", role: "Global configuration", desc: "Defines inventory, roles_path, disables host key checking and enables pipelining for speed." },
+    { file: "inventory/hosts.yml", role: "Local inventory", desc: "Defines rocky-aiops with ansible_connection: local to run playbooks inside the VM." },
+    { file: "inventory/oracle.yml", role: "OCI inventory", desc: "Defines vm-bastion and vm-k3s with SSH connection via ProxyCommand through the bastion." },
+    { file: "playbooks/site.yml", role: "Main playbook", desc: "Runs the 6 hardening roles in order. Optional second play for vault-agent." },
+    { file: "roles/system-base/", role: "Base role", desc: "tasks/main.yml + defaults/main.yml — update, packages, timezone, and locale." },
+];
+---
+
+<DocsLayout
+    title="Base Setup - ITOps Automation Lab"
+    description="Phase 1 of the Rocky Linux ITOps Automation Lab: system base hardening with Ansible — system-base, SELinux, firewalld, SSH hardening, fail2ban, and dnf-automatic."
+    activePage="base-setup"
+    lang="en"
+    prev={{
+        label: "Quick Start",
+        href: "/en/aiops-lab/getting-started/quick-start",
+    }}
+    next={{
+        label: "SELinux Configuration",
+        href: "/en/aiops-lab/phase-1/selinux",
+    }}
+>
+    <div class="docs-page">
+        <!-- ═══ Hero ═══ -->
+        <div class="f1-hero">
+            <div class="f1-hero__top">
+                <div class="f1-hero__badge">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    Phase 1
+                </div>
+                <span class="f1-hero__time">Rocky Linux 9 · ARM64</span>
+            </div>
+
+            <h1 class="f1-hero__title">
+                Base Setup
+                <span class="f1-hero__accent">· RHEL Hardening</span>
+            </h1>
+            <p class="f1-hero__subtitle">
+                The lab's starting point. An Ansible playbook that takes a freshly
+                installed Rocky Linux 9 VM and hardens it — SELinux enforcing,
+                firewalld active, SSH without passwords, and automatic security
+                updates.
+            </p>
+        </div>
+
+        <!-- ═══ Overview ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">01</span>
+                <h2 class="overview-h2">What does this phase do?</h2>
+            </div>
+            <p class="overview-lead">
+                Phase 1 applies the base hardening every Rocky Linux VM in the
+                project needs — whether in the local lab or on Oracle Cloud.
+                It uses Ansible to ensure the system state is idempotent and
+                reproducible — after running the playbook, the VM is in exactly
+                the expected state.
+            </p>
+
+            <div class="info-card">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>Why Ansible instead of a bash script?</strong>
+                    Because it's idempotent — if something is already configured,
+                    it won't touch it. If it fails halfway through, you can
+                    re-run it without breaking anything. And because the same
+                    playbook is used in the local lab and on Oracle Cloud — just
+                    swap the inventory.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ system-base Rolee ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">02</span>
+                <h2 class="overview-h2">system-base Role</h2>
+            </div>
+            <p class="overview-lead">
+                The first role the playbook runs. Updates the system, installs
+                essential packages, and configures timezone and locale.
+                Zero magic — everything explicit.
+            </p>
+
+            <h3 class="subsection-title">Installed packages</h3>
+
+            <div class="pkg-grid">
+                {packages.map((pkg) => (
+                    <div class="pkg-card">
+                        <div class="pkg-card__name">
+                            <code>{pkg.name}</code>
+                        </div>
+                        <div class="pkg-card__desc">{pkg.desc}</div>
+                    </div>
+                ))}
+            </div>
+
+            <h3 class="subsection-title">Defaults</h3>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">roles/system-base/defaults/main.yml</span>
+                </div>
+                <pre><code>system_base_packages:
+    - vim
+    - curl
+    - wget
+    - git
+    - net-tools
+    - htop
+    - bash-completion
+    - glibc-langpack-es
+
+system_timezone: America/Argentina/Buenos_Aires
+system_locale: es_AR.utf8</code></pre>
+            </div>
+
+            <div class="info-card info-card--tip">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <div class="info-card__text">
+                    To use a different timezone or locale, modify the variables
+                    in <code>defaults/main.yml</code> or pass them as extra vars:
+                    <code>ansible-playbook ... -e "system_timezone=Europe/Madrid"</code>.
+                    No need to touch the tasks.
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Tasks</h3>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">roles/system-base/tasks/main.yml</span>
+                </div>
+                <pre><code>- name: Update all system packages
+  ansible.builtin.dnf:
+      name: "*"
+      state: latest
+      update_cache: true
+
+- name: Install base packages
+  ansible.builtin.dnf:
+      name: "{O} system_base_packages {C}"
+      state: present
+
+- name: Configure timezone
+  ansible.builtin.command:
+      cmd: timedatectl set-timezone {O} system_timezone {C}
+  changed_when: false
+
+- name: Configure locale
+  ansible.builtin.command:
+      cmd: localectl set-locale LANG={O} system_locale {C}
+  changed_when: false</code></pre>
+            </div>
+
+            <p class="overview-text">
+                Four simple tasks. The first runs a full <code>dnf update</code>
+                (equivalent to <code>apt update && apt upgrade</code> on Debian).
+                The next ones install the packages from the list, configure
+                timezone and system locale.
+            </p>
+        </div>
+
+        <!-- ═══ Playbook Completo ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">03</span>
+                <h2 class="overview-h2">The Complete Playbook</h2>
+            </div>
+            <p class="overview-lead">
+                <code>site.yml</code> runs the 6 hardening roles in order.
+                Each role depends on the previous one — firewalld assumes
+                system-base ran, SELinux assumes firewalld is active, and
+                so on.
+            </p>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">playbooks/site.yml</span>
+                </div>
+                <pre><code>---
+# Main playbook — Rocky Linux AIOps Lab
+
+- name: Rocky Linux 9 base system hardening
+  hosts: rocky-aiops
+  become: true
+  roles:
+      - system-base
+      - firewalld
+      - selinux
+      - ssh-hardening
+      - fail2ban
+      - dnf-automatic</code></pre>
+            </div>
+
+            <div class="roles-flow">
+                {hardeningRoles.map((role, i) => (
+                    <div class="role-node">
+                        <div class="role-node__icon">
+                            <span class="role-node__phase">{role.phase}</span>
+                        </div>
+                        <div class="role-node__content">
+                            <div class="role-node__name">{role.name}</div>
+                            <div class="role-node__desc">{role.desc}</div>
+                        </div>
+                        {i < hardeningRoles.length - 1 && (
+                            <div class="role-node__connector">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            <p class="overview-text">
+                Order matters. <code>system-base</code> ensures packages exist
+                before <code>firewalld</code> tries to use them.
+                <code>selinux</code> runs after <code>firewalld</code> because
+                some booleans depend on already-open ports.
+                <code>ssh-hardening</code> goes last in the network hardening so
+                you don't lock yourself out of the VM while configuring the firewall.
+            </p>
+        </div>
+
+        <!-- ═══ Execution ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">04</span>
+                <h2 class="overview-h2">Running the Playbook</h2>
+            </div>
+            <p cTwo execution modes: inside the VM (local lab) or from your
+                Mac targeting the VM via SSH. The result is the sameesde tu
+                Mac apuntando a the VM por SSH. El resultado es el mismo.
+            </p>
+
+            <h3 class="subsection-title">Mode 1 — Inside the VM</h3>
+            <p class="overview-text">
+                Clone the repo inside the VM and run Ansible locally.
+                The inventory uses <code>ansible_connection: local</code> — no
+                SSH needed.
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">Rocky Linux VM</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> git clone https://github.com/agusm2002/rocky-linux-aiops-lab.git</span></div>
+                    <div class="t-line"><span class="t-out">Cloning into 'rocky-linux-aiops-lab'...</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> cd rocky-linux-aiops-lab/ansible</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> ansible-playbook playbooks/site.yml</span></div>
+                    <div class="t-line"><span class="t-out">PLAY [Base hardening for Rocky Linux 9] ***</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">ok:</span> [rocky-aiops] Update all packages</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-changed">changed:</span> [rocky-aiops] Install base packages</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">ok:</span> [rocky-aiops] Configure timezone</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">ok:</span> [rocky-aiops] firewalld active and enabled</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">ok:</span> [rocky-aiops] SELinux enforcing</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-changed">changed:</span> [rocky-aiops] Change SSH port</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-out">PLAY RECAP ************************************</span></div>
+                    <div class="t-line"><span class="t-out">rocky-aiops : <span class="t-ok">ok=12</span> <span class="t-changed">changed=4</span> unreachable=0 failed=0</span></div>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Mode 2 — From your local machine (SSH)</h3>
+            <p class="overview-text">
+                Uncomment the SSH lines in the inventory and run from your
+                local terminal. Ideal for the real development
+                workflow.
+            </p>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">inventory/hosts.yml (SSH mode)</span>
+                </div>
+                <pre><code>rocky-aiops:
+    # ansible_host: localhost
+    # ansible_connection: local
+    ansible_host: 192.168.64.10
+    ansible_port: 2222
+    ansible_user: agustinm
+    ansible_ssh_private_key_file: ~/.ssh/id_ed25519
+    ansible_python_interpreter: /usr/bin/python3</code></pre>
+            </div>
+
+            <div class="info-card info-card--warn">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="info-card__text">
+                    When running from your local machine over SSH, make sure the VM
+                    has port 2222 accessible and the SSH key is copied to the VM
+                    before running <code>ssh-hardening</code>.
+                    That role disables password auth — without a configured key,
+                    SSH access is lost.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Estructura del Proyecto ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">05</span>
+                <h2 class="overview-h2">Ansible Structure</h2>
+            </div>
+            <p cEach piece has a clear purpose. No magic files or hidden
+                conventionopósito claro. No hay archivos mágicos
+                ni convenciones ocultas.
+            </p>
+
+            <div class="structure-grid">
+                {playbookStructure.map((item) => (
+                    <div class="struct-card">
+                        <div class="struct-card__file">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 7 20 7"/></svg>
+                            <code>{item.file}</code>
+                        </div>
+                        <div class="struct-card__role">{item.role}</div>
+                        <div class="struct-card__desc">{item.desc}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <!-- ═══ Verificación ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">06</span>
+                <h2 class="overview-h2">Verify It Worked</h2>
+            </div>
+            <p cAfter running the playbook, verify everything is in order
+                with these command el playbook, verificar que todo esté en orden
+                con estos comandos.
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">verify-base.sh</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-comment"># SELinux must be Enforcing</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> getenforce</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">Enforcing</span></span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># firewalld must be running</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> systemctl is-active firewalld</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">active</span></span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># SSH must listen on 2222, not 22</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> ss -tlnp | grep sshd</span></div>
+                    <div class="t-line"><span class="t-out">LISTEN 0  128  *:2222  *:*  users:(("sshd",pid=891,fd=3))</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Root login must be disabled</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> grep PermitRootLogin /etc/ssh/sshd_config</span></div>
+                    <div class="t-line"><span class="t-out">PermitRootLogin no</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># fail2ban must be protecting SSH</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> fail2ban-client status sshd</span></div>
+                    <div class="t-line"><span class="t-out">Status for the jail 'sshd'</span></div>
+                    <div class="t-line"><span class="t-out">  |- Filter: Currently 0 banned</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ CTA ═══ -->
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card">
+                <div class="cta-card__content">
+                    <h3 class="cta-card__title">Next: SELinux</h3>
+                    <p class="cta-card__desc">
+                        With base hardening applied, dive into
+                        SELinux — the biggest difference between RHEL and Ubuntu.
+                        Why it's enforcing, what booleans are, and
+                        how it coexists with k3s.
+                    </p>
+                </div>
+                <a href="/en/aiops-lab/phase-1/selinux" class="cta-card__btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>
+                    SELinux in Detail
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page {
+        max-width: 740px;
+    }
+
+    /* ── Hero ── */
+    .f1-hero {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.75rem;
+        margin-bottom: 3rem;
+    }
+
+    .f1-hero__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+
+    .f1-hero__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+
+    .f1-hero__time {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.4rem;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .f1-hero__title {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 700;
+        color: var(--green-50);
+        line-height: 1.15;
+        margin-bottom: 0.5rem;
+    }
+
+    .f1-hero__accent {
+        color: var(--green-500);
+        font-weight: 500;
+    }
+
+    .f1-hero__subtitle {
+        font-size: var(--text-md);
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 560px;
+    }
+
+    /* ── Sections ── */
+    .overview-section {
+        margin-bottom: 3rem;
+    }
+
+    .overview-section--cta {
+        margin-top: 1rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .section-num {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-600);
+        font-weight: 500;
+    }
+
+    .overview-h2 {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0;
+    }
+
+    .overview-lead {
+        font-size: var(--text-base);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1.5rem;
+        max-width: 560px;
+    }
+
+    .overview-text {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1rem;
+    }
+
+    .overview-text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    .subsection-title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 1.5rem 0 0.75rem;
+    }
+
+    /* ── Info Cards ── */
+    .info-card {
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.875rem 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .info-card--tip {
+        border-color: rgba(34, 197, 94, 0.2);
+        background: rgba(34, 197, 94, 0.03);
+    }
+
+    .info-card--tip .info-card__icon {
+        color: var(--green-400);
+    }
+
+    .info-card--warn {
+        border-color: rgba(234, 179, 8, 0.25);
+        background: rgba(234, 179, 8, 0.04);
+    }
+
+    .info-card--warn .info-card__icon {
+        color: #eab308;
+    }
+
+    .info-card__icon {
+        flex-shrink: 0;
+        color: var(--green-400);
+        margin-top: 0.1rem;
+    }
+
+    .info-card__icon svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+    }
+
+    .info-card__text strong {
+        color: var(--green-50);
+        font-weight: 600;
+    }
+
+    .info-card__text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    /* ── Package Grid ── */
+    .pkg-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .pkg-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.85rem 1rem;
+        transition: background 0.2s;
+    }
+
+    .pkg-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .pkg-card__name code {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+
+    .pkg-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.45;
+        margin-top: 0.25rem;
+    }
+
+    /* ── Code Block ── */
+    .code-block {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .code-block__header {
+        display: flex;
+        align-items: center;
+        padding: 0.45rem 0.85rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .code-block__file {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+    }
+
+    .code-block pre {
+        margin: 0;
+        padding: 0.85rem;
+        overflow-x: auto;
+    }
+
+    .code-block code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-muted);
+        line-height: 1.55;
+    }
+
+    /* ── Terminal ── */
+    .terminal-block {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        margin-bottom: 1.5rem;
+    }
+
+    .terminal-block__bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .terminal-block__dots {
+        display: flex;
+        gap: 0.3rem;
+    }
+
+    .terminal-block__dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+        display: block;
+    }
+
+    .terminal-block__title {
+        color: var(--text-dim);
+        font-size: var(--text-2xs);
+        margin-left: auto;
+        margin-right: auto;
+        padding-right: 2.5rem;
+    }
+
+    .terminal-block__body {
+        padding: 0.65rem 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    .t-line {
+        line-height: 1.5;
+    }
+
+    .t-line--spacer {
+        height: 0.35rem;
+    }
+
+    .t-prompt {
+        color: var(--green-600);
+        margin-right: 0.3rem;
+    }
+
+    .t-cmd {
+        color: var(--green-300);
+    }
+
+    .t-out {
+        color: var(--text-dim);
+        padding-left: 1.1rem;
+    }
+
+    .t-ok {
+        color: var(--green-400);
+    }
+
+    .t-changed {
+        color: #eab308;
+    }
+
+    .t-comment {
+        color: rgba(255, 255, 255, 0.25);
+        font-style: italic;
+        padding-left: 0;
+    }
+
+    /* ── Rolees Flow ── */
+    .roles-flow {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+
+    .role-node {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem 0;
+        position: relative;
+    }
+
+    .role-node__icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 0.5rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        flex-shrink: 0;
+        position: relative;
+        z-index: 1;
+    }
+
+    .role-node__phase {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--green-400);
+        font-weight: 600;
+    }
+
+    .role-node__content {
+        flex: 1;
+        min-width: 0;
+        padding-top: 0.25rem;
+    }
+
+    .role-node__name {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-bottom: 0.15rem;
+    }
+
+    .role-node__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.45;
+    }
+
+    .role-node__connector {
+        position: absolute;
+        left: 1.05rem;
+        top: 2.8rem;
+        color: var(--border);
+        z-index: 0;
+    }
+
+    .role-node__connector svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* ── Structure Grid ── */
+    .structure-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .struct-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.85rem 1rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        transition: background 0.2s;
+    }
+
+    .struct-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .struct-card__file {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        font-weight: 500;
+        color: var(--green-400);
+        flex-shrink: 0;
+        min-width: 0;
+        max-width: 180px;
+    }
+
+    .struct-card__file svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+    }
+
+    .struct-card__file code {
+        font-size: var(--text-xs);
+        background: none;
+        padding: 0;
+        color: var(--green-400);
+    }
+
+    .struct-card__role {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 0.15rem 0.4rem;
+        border-radius: 0.3rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+
+    .struct-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        flex: 1;
+        min-width: 0;
+    }
+
+    /* ── CTA ── */
+    .cta-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+    }
+
+    .cta-card__content {
+        flex: 1;
+    }
+
+    .cta-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0 0 0.25rem;
+    }
+
+    .cta-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0;
+    }
+
+    .cta-card__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--green-50);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.6rem 1rem;
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.2s, border-color 0.2s;
+    }
+
+    .cta-card__btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--border-hover);
+    }
+
+    .cta-card__btn svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+        .pkg-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .cta-card {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .struct-card__file {
+            max-width: 130px;
+        }
+
+        .struct-card__role {
+            display: none;
+        }
+    }
+</style>

@@ -1,0 +1,81 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+const prov = 'provider "oci" ' + "{\n" +
+    "  region           = var.region\n" +
+    "  tenancy_ocid     = var.tenancy_ocid\n" +
+    "  user_ocid        = var.user_ocid\n" +
+    "  private_key_path = var.private_key_path\n" +
+    "  fingerprint      = var.fingerprint\n" +
+    "}";
+---
+
+<DocsLayout title="OpenTofu OCI Provider - ITOps Automation Lab" activePage="opentofu-oci"
+    lang="en"
+    prev={{ label: "Architecture OCI", href: "/en/aiops-lab/phase-9/architecture" }}
+    next={{ label: "OCI Vault vs HashiCorp", href: "/en/aiops-lab/phase-9/oci-vault-vs-hashicorp" }}
+>
+    <div class="docs-page">
+        <div class="h"><div class="h__top"><div class="h__badge">Phase 9.1</div><span class="h__time">OpenTofu OCI</span></div><h1 class="h__title">OpenTofu OCI Provider<span class="h__accent"> · oracle/oci</span></h1><p class="h__sub">El provider oracle/oci ~> 6.0 de OpenTofu provisiona toda la infraestructura de Oracle Cloud: VCN, NSG, VMs Ampere A1, OCI Vault y Object Storage. Mismo workflow init → plan → apply que el provider de Kubernetes local.</p></div>
+
+        <div class="sec">
+            <div class="sec__h"><span class="sec__num">01</span><h2 class="sec__h2">Autenticacion OCI</h2></div>
+            <p class="sec__lead">OCI usa API keys para autenticar. Se generan en la consola y se pasan como variables sensibles a OpenTofu via terraform.tfvars.</p>
+            <div class="cb"><div class="cb__h"><span class="cb__file">tofu/oracle/provider.tf</span></div>
+                <pre><code>{prov}</code></pre>
+            </div>
+            <p class="sec__text">Las variables tenancy_ocid, user_ocid y fingerprint estan marcadas como sensitive = true. OpenTofu no las muestra en logs ni en el output de plan. Se almacenan en terraform.tfvars que esta en .gitignore.</p>
+        </div>
+
+        <div class="sec">
+            <div class="sec__h"><span class="sec__num">02</span><h2 class="sec__h2">Recursos Creados</h2></div>
+            <p class="sec__lead">Cinco archivos .tf definen la infraestructura completa de Oracle Cloud.</p>
+            <div class="grid2">
+                <div class="sc"><div class="sc__val">network.tf</div><div class="sc__desc">VCN 10.0.0.0/16, subnet publica, Internet Gateway, route table</div></div>
+                <div class="sc"><div class="sc__val">main.tf</div><div class="sc__desc">2 NSGs con reglas least-privilege para bastion y k3s</div></div>
+                <div class="sc"><div class="sc__val">compute.tf</div><div class="sc__desc">2 VMs Ampere A1 ARM64, imagen Rocky 9, cloud-init</div></div>
+                <div class="sc"><div class="sc__val">object_storage.tf</div><div class="sc__desc">Bucket Loki (S3-compatible, NoPublicAccess)</div></div>
+                <div class="sc"><div class="sc__val">vault.tf</div><div class="sc__desc">OCI Vault + master key AES-256 + secrets placeholder</div></div>
+            </div>
+        </div>
+
+        <div class="sec sec--cta">
+            <div class="cta"><div class="cta__content"><h3 class="cta__title">Siguiente: OCI Vault vs HashiCorp</h3><p class="cta__desc">Comparacion entre Vault self-hosted en el lab y OCI Vault gestionado en la nube.</p></div><a href="/en/aiops-lab/phase-9/oci-vault-vs-hashicorp" class="cta__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>OCI Vault vs HashiCorp</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style>
+    .docs-page { max-width: 740px; }
+    .h { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .h__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .h__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .h__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .h__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .h__accent { color: var(--green-500); font-weight: 500; }
+    .h__sub { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .sec { margin-bottom: 3rem; }
+    .sec--cta { margin-top: 1rem; }
+    .sec__h { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .sec__num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .sec__h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .sec__lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .sec__text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.65; margin-bottom: 1rem; }
+    .sec__text code { font-family: var(--font-mono); font-size: var(--text-xs); background: rgba(255,255,255,0.06); padding: 0.1rem 0.35rem; border-radius: 0.25rem; color: var(--green-300); }
+    .cb { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .cb__h { display: flex; align-items: center; padding: 0.45rem 0.85rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .cb__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .cb pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .cb code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+    .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+    .sc { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.85rem; }
+    .sc__val { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 600; color: var(--green-300); margin-bottom: 0.25rem; }
+    .sc__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.45; }
+    .cta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta__content { flex: 1; }
+    .cta__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 600px) { .grid2 { grid-template-columns: 1fr; } .cta { flex-direction: column; align-items: flex-start; } }
+</style>

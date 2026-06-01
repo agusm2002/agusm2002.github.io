@@ -1,0 +1,134 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+
+const agentFlow = [
+    { step: "1", title: "Webhook o trigger manual", desc: "Un push a GitHub (via webhook) o un click en 'Build Now' dispara el pipeline. Jenkins recibe el evento y consulta el Jenkinsfile en el repo." },
+    { step: "2", title: "Jenkins lee el Jenkinsfile", desc: "El pipeline declarativo define un agente Kubernetes con la imagen del pod y los containers necesarios para el build." },
+    { step: "3", title: "Jenkins crea un Pod", desc: "Usando su ServiceAccount (jenkins), el master llama a la API de Kubernetes y crea un Pod en el namespace aiops. El pod tiene la imagen definida en el Jenkinsfile." },
+    { step: "4", title: "El agente se conecta via JNLP", desc: "El contenedor del agente inicia un proceso JNLP que se conecta al master en jenkins.aiops.svc.cluster.local:50000. Establece un canal de comunicacion bidireccional." },
+    { step: "5", title: "El master envia comandos", desc: "Cada stage del pipeline se traduce en comandos que el master envia al agente via el canal JNLP. El agente los ejecuta y devuelve logs y resultados." },
+    { step: "6", title: "El Pod se destruye", desc: "Al terminar el pipeline (exito o fallo), Jenkins elimina el Pod. El agente dejo de existir. No hay VMs que mantener, actualizar o parchear." },
+];
+
+const agentSpec = [
+    "pipeline {",
+    "  agent {",
+    "    kubernetes {",
+    "      yaml '''",
+    "        apiVersion: v1",
+    "        kind: Pod",
+    "        spec:",
+    "          containers:",
+    "          - name: tools",
+    "            image: alpine/k8s:1.29.2",
+    "            command: [cat]",
+    "            tty: true",
+    "      '''",
+    "    }",
+    "  }",
+    "  stages {",
+    "    stage('Lint YAML') {",
+    "      steps {",
+    "        container('tools') {",
+    "          sh 'yamllint k3s/manifests/'",
+    "        }",
+    "      }",
+    "    }",
+    "  }",
+    "}",
+].join("\n");
+---
+
+<DocsLayout
+    title="Agentes Dinamicos - ITOps Automation Lab"
+    description="Fase 6 del Rocky Linux ITOps Automation Lab: agentes de Jenkins como pods efimeros en k3s — Kubernetes plugin, JNLP y ciclo de vida de los agentes de build."
+    activePage="dynamic-agents"
+    prev={{ label: "Jenkins on Kubernetes", href: "/aiops-lab/phase-6/jenkins-on-k8s" }}
+    next={{ label: "Pipeline Setup", href: "/aiops-lab/phase-6/pipeline-setup" }}
+>
+    <div class="docs-page">
+        <div class="f6-hero"><div class="f6-hero__top"><div class="f6-hero__badge">Fase 6.1</div><span class="f6-hero__time">Agentes Efimeros</span></div><h1 class="f6-hero__title">Agentes Dinamicos<span class="f6-hero__accent"> · Pod por Build</span></h1><p class="f6-hero__subtitle">En lugar de mantener VMs estaticas como agentes, Jenkins usa el plugin de Kubernetes para crear un pod por cada build. El pod nace cuando el pipeline empieza y muere cuando termina. Cero mantenimiento, cero estado residual.</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">El Ciclo de Vida de un Agente</h2></div>
+            <p class="overview-lead">Seis pasos desde el trigger hasta la destruccion del pod. Todo automatizado — el desarrollador solo ve el resultado del pipeline.</p>
+            <div class="flow-list">
+                {agentFlow.map((a) => (
+                    <div class="flow-item"><div class="flow-item__num">{a.step}</div><div class="flow-item__body"><div class="flow-item__title">{a.title}</div><div class="flow-item__desc">{a.desc}</div></div></div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">Declarar el Agente en el Jenkinsfile</h2></div>
+            <p class="overview-lead">El pod del agente se define directamente en el Jenkinsfile con YAML inline. Jenkins interpreta esta definicion y crea el pod antes de ejecutar el primer stage.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">Jenkinsfile — definicion de agente Kubernetes</span></div>
+                <pre><code>{agentSpec}</code></pre>
+            </div>
+            <p class="overview-text">El contenedor <code>tools</code> usa la imagen <code>alpine/k8s:1.29.2</code> que incluye kubectl, yamllint, ansible-lint y tofu. El comando <code>cat</code> con <code>tty: true</code> mantiene el contenedor vivo mientras Jenkins le envia comandos via JNLP.</p>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">RBAC: Como Jenkins Crea Pods</h2></div>
+            <p class="overview-lead">Para que Jenkins pueda crear y destruir pods de agentes, su ServiceAccount necesita permisos RBAC especificos. Sin esto, el plugin de Kubernetes falla con errores de autorizacion.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">jenkins/rbac.yml (extracto)</span></div>
+                <pre><code>apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jenkins-agent
+  namespace: aiops
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "pods/exec"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets", "configmaps"]
+    verbs: ["get"]</code></pre>
+            </div>
+            <div class="info-card"><div class="info-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="info-card__text"><strong>Principio de least-privilege.</strong> El Role solo permite crear pods en el namespace aiops y leer secrets/configmaps necesarios. No permite acceder a otros namespaces ni modificar recursos del cluster.</div></div>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Siguiente: Pipeline Setup</h3><p class="cta-card__desc">Con los agentes dinamicos entendidos, la pagina siguiente muestra el Jenkinsfile completo: stages de linting, validacion y notificacion a n8n en caso de fallo.</p></div><a href="/aiops-lab/phase-6/pipeline-setup" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Pipeline</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f6-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f6-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f6-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f6-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f6-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f6-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f6-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .overview-text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.65; margin-bottom: 1rem; }
+    .overview-text code { font-family: var(--font-mono); font-size: var(--text-xs); background: rgba(255,255,255,0.06); padding: 0.1rem 0.35rem; border-radius: 0.25rem; color: var(--green-300); }
+    .flow-list { display: flex; flex-direction: column; gap: 0.35rem; }
+    .flow-item { display: flex; gap: 0.65rem; padding: 0.5rem 0.8rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; }
+    .flow-item__num { display: flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); font-family: var(--font-mono); font-size: var(--text-2xs); font-weight: 600; color: var(--green-400); flex-shrink: 0; }
+    .flow-item__title { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600; color: var(--green-300); margin-bottom: 0.1rem; }
+    .flow-item__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.45; }
+    .code-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .code-block__header { display: flex; align-items: center; padding: 0.45rem 0.85rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .code-block__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .code-block pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .code-block code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+    .info-card { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

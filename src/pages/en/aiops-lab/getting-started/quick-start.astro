@@ -1,0 +1,856 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+    title="Quick Start - ITOps Automation Lab"
+    description="Spin up the full lab de ITOps en Rocky Linux in under 15 minutes — clone, provision, deploy k3s and access Grafana."
+    activePage="quickstart"
+    lang="en"
+    prev={{
+        label: "Prerequisites",
+        href: "/en/aiops-lab/getting-started/prerequisites",
+    }}
+    next={{
+        label: "Base Setup",
+        href: "/en/aiops-lab/phase-1/base-setup",
+    }}
+>
+    <div class="docs-page">
+        <!-- ═══ Hero ═══ -->
+        <div class="qs-hero">
+            <div class="qs-hero__top">
+                <div class="qs-hero__badge">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    ><polygon
+                            points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"
+                        ></polygon></svg
+                    >
+                    Setup Rápido
+                </div>
+                <span class="qs-hero__time">~15 min</span>
+            </div>
+
+            <h1 class="qs-hero__title">
+                Quick Start
+                <span class="qs-hero__accent">· Lab Local</span>
+            </h1>
+            <p class="qs-hero__subtitle">
+                Levantar el stack completo en una máquina local con UTM o libvirt.
+                Desde the VM vacía hasta Grafana corriendo en k3s.
+            </p>
+        </div>
+
+        <!-- ═══ Steps ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">01</span>
+                <h2 class="overview-h2">Clonar y Provisionar</h2>
+            </div>
+            <p class="overview-lead">
+                Clone the repo and run the playbook de Ansible para dejar the VM
+                Rocky Linux hardenida y lista para k3s.
+            </p>
+
+            <div class="qs-step">
+                <div class="qs-step__number">1</div>
+                <div class="qs-step__content">
+                    <h3 class="qs-step__title">Clonar el repositorio</h3>
+                    <div class="prereq-terminal">
+                        <div class="t-bar">
+                            <div class="t-dots">
+                                <span></span><span></span><span></span>
+                            </div>
+                            <span class="t-title">terminal</span>
+                        </div>
+                        <div class="t-body">
+                            <div class="t-line">
+                                <span class="t-prompt">$</span>
+                                <span class="t-cmd"
+                                    >git clone https://github.com/agusm2002/rocky-linux-aiops-lab.git</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    >Cloning into 'rocky-linux-aiops-lab'...</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-prompt">$</span>
+                                <span class="t-cmd"
+                                    >cd rocky-linux-aiops-lab</span
+                                >
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="qs-step">
+                <div class="qs-step__number">2</div>
+                <div class="qs-step__content">
+                    <h3 class="qs-step__title">Provisionar con Ansible</h3>
+                    <p class="qs-step__desc">
+                        Este playbook instala the packages base, configura
+                        SELinux, firewalld y fail2ban. Verificar que la IP
+                        o FQDN estén correctos en el inventario.
+                    </p>
+                    <div class="prereq-terminal">
+                        <div class="t-bar">
+                            <div class="t-dots">
+                                <span></span><span></span><span></span>
+                            </div>
+                            <span class="t-title">ansible</span>
+                        </div>
+                        <div class="t-body">
+                            <div class="t-line">
+                                <span class="t-prompt">$</span>
+                                <span class="t-cmd"
+                                    >ansible-playbook -i ansible/inventory/local.yml \</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-cmd"
+                                    >ansible/playbooks/rocky-base.yml</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out">PLAY [Rocky Linux Base Setup] ******************</span>
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    ><span class="t-ok">ok:</span> [rocky-vm]
+                                    SELinux enforcing</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    ><span class="t-ok">changed:</span>
+                                    [rocky-vm] Install k3s deps</span
+                                >
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ k3s ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">02</span>
+                <h2 class="overview-h2">Instalar k3s</h2>
+            </div>
+            <p class="overview-lead">
+                Install k3s on the VM and copy el kubeconfig a la máquina local
+                para administrar el cluster cómodamente.
+            </p>
+
+            <div class="qs-step">
+                <div class="qs-step__number">3</div>
+                <div class="qs-step__content">
+                    <h3 class="qs-step__title">Ejecutar el script de k3s</h3>
+                    <div class="prereq-terminal">
+                        <div class="t-bar">
+                            <div class="t-dots">
+                                <span></span><span></span><span></span>
+                            </div>
+                            <span class="t-title">k3s install</span>
+                        </div>
+                        <div class="t-body">
+                            <div class="t-line">
+                                <span class="t-comment"># En the VM Rocky Linux</span>
+                            </div>
+                            <div class="t-line">
+                                <span class="t-prompt">$</span>
+                                <span class="t-cmd"
+                                    >curl -sfL https://get.k3s.io | sh -s - --write-kubeconfig-mode 644</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out">[INFO] Installing k3s...</span>
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    ><span class="t-ok">Created:</span>
+                                    /etc/rancher/k3s/k3s.yaml</span
+                                >
+                            </div>
+                            <div class="t-line t-line--spacer"></div>
+                            <div class="t-line">
+                                <span class="t-comment"># Verificar que el nodo está Ready</span>
+                            </div>
+                            <div class="t-line">
+                                <span class="t-prompt">$</span>
+                                <span class="t-cmd">kubectl get nodes</span>
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    >NAME STATUS ROLES AGE VERSION</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    >rocky-vm <span class="t-ok">Ready</span>
+                                    control-plane,master 45s v1.29.4+k3s1</span
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="prereq-callout">
+                        <div class="prereq-callout__icon">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            ><circle cx="12" cy="12" r="10"/><line
+                                    x1="12"
+                                    y1="8"
+                                    x2="12"
+                                    y2="12"/><line
+                                    x1="12"
+                                    y1="16"
+                                    x2="12.01"
+                                    y2="16"/></svg>
+                        </div>
+                        <div class="prereq-callout__text">
+                            Para acceder desde la máquina local, copiar
+                            <code>/etc/rancher/k3s/k3s.yaml</code> a
+                            <code>~/.kube/config</code> y reemplazar
+                            <code>127.0.0.1</code> por la IP de the VM.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Deploy ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">03</span>
+                <h2 class="overview-h2">Desplegar el Stack</h2>
+            </div>
+            <p class="overview-lead">
+                Apply the Kubernetes manifests para levantar
+                Prometheus, Loki, Grafana y n8n. Todo se despliega en el
+                namespace <code class="inline-code">aiops</code>.
+            </p>
+
+            <div class="qs-step">
+                <div class="qs-step__number">4</div>
+                <div class="qs-step__content">
+                    <h3 class="qs-step__title">Aplicar manifiestos</h3>
+                    <div class="prereq-terminal">
+                        <div class="t-bar">
+                            <div class="t-dots">
+                                <span></span><span></span><span></span>
+                            </div>
+                            <span class="t-title">k3s deploy</span>
+                        </div>
+                        <div class="t-body">
+                            <div class="t-line">
+                                <span class="t-prompt">$</span>
+                                <span class="t-cmd"
+                                    >kubectl create namespace aiops</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    >namespace/aiops created</span
+                                >
+                            </div>
+                            <div class="t-line t-line--spacer"></div>
+                            <div class="t-line">
+                                <span class="t-prompt">$</span>
+                                <span class="t-cmd"
+                                    >kubectl apply -f k3s/manifests/ -n aiops</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    >configmap/prometheus-config created</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    >deployment.apps/grafana created</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    >deployment.apps/n8n created</span
+                                >
+                            </div>
+                            <div class="t-line t-line--spacer"></div>
+                            <div class="t-line">
+                                <span class="t-comment"># Esperar a que todos los pods estén Running</span>
+                            </div>
+                            <div class="t-line">
+                                <span class="t-prompt">$</span>
+                                <span class="t-cmd"
+                                    >kubectl get pods -n aiops -w</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    >prometheus-0 <span class="t-ok"
+                                        >Running</span
+                                    > 0/1 30s</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    >grafana-7d4f5b6d8-xk2p <span class="t-ok"
+                                        >Running</span
+                                    > 1/1 45s</span
+                                >
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Access ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">04</span>
+                <h2 class="overview-h2">Acceder a Grafana</h2>
+            </div>
+            <p class="overview-lead">
+                Port-forward the Grafana service y abrir el dashboard
+                en el navegador. Credenciales by default: <code class="inline-code">admin / admin</code>.
+            </p>
+
+            <div class="qs-step">
+                <div class="qs-step__number">5</div>
+                <div class="qs-step__content">
+                    <h3 class="qs-step__title">Port-forward y login</h3>
+                    <div class="prereq-terminal">
+                        <div class="t-bar">
+                            <div class="t-dots">
+                                <span></span><span></span><span></span>
+                            </div>
+                            <span class="t-title">access</span>
+                        </div>
+                        <div class="t-body">
+                            <div class="t-line">
+                                <span class="t-prompt">$</span>
+                                <span class="t-cmd"
+                                    >kubectl port-forward svc/grafana -n aiops 3000:80</span
+                                >
+                            </div>
+                            <div class="t-line">
+                                <span class="t-out"
+                                    >Forwarding from 127.0.0.1:3000 -> 3000</span
+                                >
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="access-card">
+                        <div class="access-card__label">URL</div>
+                        <a
+                            href="http://localhost:3000"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="access-card__url"
+                        >
+                            http://localhost:3000
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            ><path
+                                    d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+                                ></path><polyline
+                                    points="15 3 21 3 21 9"
+                                ></polyline><line
+                                    x1="10"
+                                    y1="14"
+                                    x2="21"
+                                    y2="3"></line></svg>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ What's Next ═══ -->
+        <div class="overview-section overview-section--cta">
+            <div class="section-header">
+                <span class="section-num">05</span>
+                <h2 class="overview-h2">¿Qué sigue?</h2>
+            </div>
+            <p class="overview-lead">
+                The cluster is live. A partir de acá it can be profundizar en
+                cada capa del stack o configurar los workflows de respuesta a
+                incidentes.
+            </p>
+
+            <div class="next-grid">
+                <a href="/en/aiops-lab/phase-1/base-setup" class="next-card">
+                    <div class="next-card__phase">Phase 1</div>
+                    <div class="next-card__title">Rocky Linux & Hardening</div>
+                    <div class="next-card__desc">
+                        Entender the hardening base: SELinux, firewalld,
+                        fail2ban y dnf-automatic.
+                    </div>
+                    <div class="next-card__arrow">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        ><line x1="5" y1="12" x2="19" y2="12"></line><polyline
+                                points="12 5 19 12 12 19"
+                            ></polyline></svg>
+                    </div>
+                </a>
+                <a href="/en/aiops-lab/phase-5/workflow-3-incident-simulation" class="next-card">
+                    <div class="next-card__phase">Phase 5</div>
+                    <div class="next-card__title">Workflows n8n + LLM</div>
+                    <div class="next-card__desc">
+                        El diferenciador dthe project: Alertmanager → n8n →
+                        OpenCode → Discord.
+                    </div>
+                    <div class="next-card__arrow">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        ><line x1="5" y1="12" x2="19" y2="12"></line><polyline
+                                points="12 5 19 12 12 19"
+                            ></polyline></svg>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page {
+        max-width: 740px;
+    }
+
+    /* ── Hero ── */
+    .qs-hero {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.75rem;
+        margin-bottom: 3rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .qs-hero__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+
+    .qs-hero__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+    .qs-hero__badge svg {
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+    }
+
+    .qs-hero__time {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.4rem;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .qs-hero__title {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 700;
+        color: var(--green-50);
+        line-height: 1.15;
+        margin-bottom: 0.5rem;
+    }
+    .qs-hero__accent {
+        color: var(--green-500);
+        font-weight: 500;
+    }
+
+    .qs-hero__subtitle {
+        font-size: var(--text-md);
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 520px;
+    }
+
+    /* ── Sections ── */
+    .overview-section {
+        margin-bottom: 3rem;
+    }
+    .overview-section--cta {
+        margin-top: 1rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
+    .section-num {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-600);
+        font-weight: 500;
+    }
+    .overview-h2 {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0;
+    }
+    .overview-lead {
+        font-size: var(--text-base);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1.5rem;
+        max-width: 560px;
+    }
+
+    .inline-code {
+        font-family: var(--font-mono);
+        font-size: 0.85em;
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    /* ── Step Cards ── */
+    .qs-step {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
+
+    .qs-step__number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-300);
+        flex-shrink: 0;
+        position: relative;
+        z-index: 1;
+    }
+
+    /* Vertical connector line */
+    .qs-step:not(:last-child)::before {
+        content: "";
+        position: absolute;
+        left: calc(1rem - 0.5px);
+        top: 2.5rem;
+        bottom: -1.5rem;
+        width: 1px;
+        background: var(--border);
+        z-index: 0;
+    }
+
+    .qs-step__content {
+        flex: 1;
+        min-width: 0;
+        padding-top: 0.15rem;
+    }
+
+    .qs-step__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-bottom: 0.5rem;
+        margin-top: 0;
+    }
+
+    .qs-step__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin-bottom: 0.75rem;
+    }
+
+    /* ── Terminal ── */
+    .prereq-terminal {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        margin-bottom: 1rem;
+    }
+
+    .t-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+    .t-dots {
+        display: flex;
+        gap: 0.3rem;
+    }
+    .t-dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+        display: block;
+    }
+    .t-title {
+        color: var(--text-dim);
+        font-size: var(--text-2xs);
+        margin-left: auto;
+        margin-right: auto;
+        padding-right: 2.5rem;
+    }
+
+    .t-body {
+        padding: 0.65rem 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+    .t-line {
+        line-height: 1.5;
+    }
+    .t-line--spacer {
+        height: 0.35rem;
+    }
+    .t-prompt {
+        color: var(--green-600);
+        margin-right: 0.3rem;
+    }
+    .t-cmd {
+        color: var(--green-300);
+    }
+    .t-out {
+        color: var(--text-dim);
+        padding-left: 1.1rem;
+    }
+    .t-ok {
+        color: var(--green-400);
+    }
+    .t-comment {
+        color: rgba(255, 255, 255, 0.25);
+        font-style: italic;
+        padding-left: 0;
+    }
+
+    /* ── Callout ── */
+    .prereq-callout {
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.875rem 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+
+    .prereq-callout__icon {
+        flex-shrink: 0;
+        color: var(--green-400);
+        margin-top: 0.1rem;
+    }
+    .prereq-callout__icon svg {
+        width: 14px;
+        height: 14px;
+        display: block;
+    }
+    .prereq-callout__text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    /* ── Access Card ── */
+    .access-card {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+    }
+
+    .access-card__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.3rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        flex-shrink: 0;
+    }
+
+    .access-card__url {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--green-300);
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    .access-card__url:hover {
+        color: var(--green-50);
+    }
+    .access-card__url svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+    }
+
+    /* ── Next Grid ── */
+    .next-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+    }
+
+    .next-card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        padding: 1.25rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        text-decoration: none;
+        transition:
+            background 0.2s,
+            border-color 0.2s;
+    }
+    .next-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: var(--border-hover);
+    }
+
+    .next-card__phase {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--green-400);
+        font-weight: 500;
+    }
+
+    .next-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+    }
+
+    .next-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        flex: 1;
+    }
+
+    .next-card__arrow {
+        position: absolute;
+        top: 1.25rem;
+        right: 1.25rem;
+        color: var(--text-dim);
+        transition: color 0.2s, transform 0.2s;
+    }
+    .next-card:hover .next-card__arrow {
+        color: var(--green-400);
+        transform: translateX(3px);
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+        .next-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    @media (max-width: 420px) {
+        .qs-hero__subtitle {
+            font-size: var(--text-base);
+        }
+    }
+</style>

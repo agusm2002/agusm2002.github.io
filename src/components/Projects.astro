@@ -17,6 +17,35 @@ const stack = [
     "Uptime Kuma",
     "GitHub Actions",
 ];
+
+const aiopsStack = [
+    "Rocky Linux",
+    "K3s",
+    "Ansible",
+    "OpenTofu",
+    "ArgoCD",
+    "Jenkins",
+    "N8N",
+    "Grafana",
+    "Prometheus",
+    "Loki",
+    "HashiCorp Vault",
+];
+
+const techLogoMap: Record<string, string> = {
+    "Rocky Linux": "rockylinux.svg",
+    K3s: "k3s.svg",
+    Ansible: "ansible.svg",
+    OpenTofu: "opentofu.svg",
+    ArgoCD: "argocd.svg",
+    Jenkins: "jenkins.svg",
+    N8N: "n8n.svg",
+    Grafana: "grafana.svg",
+    Prometheus: "prometheus.svg",
+    Loki: "loki.png",
+    "HashiCorp Vault": "vault.svg",
+};
+
 const baseUrl = import.meta.env.BASE_URL;
 
 const text = isEnglish
@@ -29,7 +58,7 @@ const text = isEnglish
           mainDesc:
               "Real infrastructure platform on Ubuntu Server ARM64: containerized applications exposed via Nginx reverse proxy, full provisioning and hardening with Ansible (UFW, Fail2Ban, ClamAV, SSH), private ZeroTier network, and CI/CD with self-hosted GitHub Actions.",
           viewRepo: "View repository",
-          nextUpdate: "Next update: migrate to the cloud",
+          nextUpdate: "",
           archLabel: "Real architecture",
           chronoAria: "View Chrono Reader on GitHub",
           chronoDesc:
@@ -45,10 +74,24 @@ const text = isEnglish
           chronoAltComic: "Comic reader in Chrono Reader",
           chronoAltAudio: "Audiobook player in Chrono Reader",
           chronoAltLibrary: "Library view in Chrono Reader",
-          placeholderBadge: "Coming Soon",
-          placeholderTitle: "New Project",
-          placeholderDesc:
-              "A new project is currently in the works. Stay tuned for updates.",
+          aiopsBadge: "ITOps & Automation",
+          aiopsTitle: "Rocky Linux AIOps Lab",
+          aiopsDesc:
+              "Self-hosted ITOps automation platform on Rocky Linux — from local k3s lab to Oracle Cloud Free Tier. n8n orchestrates incident response with LLM analysis via OpenCode Go, deployed with Ansible + OpenTofu, secrets managed with HashiCorp Vault, CI/CD with Jenkins + GitOps with ArgoCD, and production hardening for OCI.",
+          aiopsFeature1:
+              "Incident auto-response loop: Prometheus → Alertmanager → n8n → LLM → Discord",
+          aiopsFeature2:
+              "Full observability: Prometheus + Loki + Grafana Alloy + Grafana dashboards on k3s",
+          aiopsFeature3:
+              "GitOps sync with ArgoCD: manifests from GitHub auto-deployed to cluster",
+          aiopsFeature4:
+              "Jenkins self-hosted CI/CD + GitHub Actions — pipelines, lint, multi-stage builds",
+          aiopsFeature5:
+              "Oracle Cloud Free Tier ready: 4 vCPUs ARM, 24 GB RAM, OCI Vault, Object Storage",
+          aiopsFeature6:
+              "SRE practices: SLO/SLI, fail2ban, dnf-automatic, SELinux enforcing, firewalld",
+          aiopsAria: "View Rocky Linux AIOps Lab on GitHub",
+          aiopsDocs: "Docs",
           prevAria: "Previous project",
           nextAria: "Next project",
           slideAria: "Go to slide",
@@ -57,13 +100,13 @@ const text = isEnglish
           sectionLabel: "Proyectos",
           sectionTitle: "Lo que he construido",
           sectionSub: "Proyectos donde el aprendizaje es el objetivo.",
-          featuredBadge: "Proyecto Destacado",
+          featuredBadge: "Infra & DevOps",
           viewGithubAria: "Ver en GitHub",
           mainDesc:
               "Plataforma de infraestructura real sobre Ubuntu Server ARM64: aplicaciones dockerizadas expuestas via Nginx reverse proxy, aprovisionamiento y hardening completo con Ansible (UFW, Fail2Ban, ClamAV, SSH), red privada ZeroTier y CI/CD con GitHub Actions self-hosted.",
           viewRepo: "Ver repositorio",
-          nextUpdate: "Próximo update: migrar a la nube",
-          archLabel: "Arquitectura real",
+          nextUpdate: "",
+          archLabel: "Architecture",
           chronoAria: "Ver Chrono Reader en GitHub",
           chronoDesc:
               "App iOS nativa construida desde cero con Swift y SwiftUI. Lee cómics CBZ/CBR, libros digitales y audiolibros M4B con reproductor de capítulos, velocidad variable y sistema de colecciones con color personalizado.",
@@ -78,10 +121,24 @@ const text = isEnglish
           chronoAltComic: "Lector de cómic en Chrono Reader",
           chronoAltAudio: "Reproductor de audiolibros en Chrono Reader",
           chronoAltLibrary: "Biblioteca en Chrono Reader",
-          placeholderBadge: "Próximamente",
-          placeholderTitle: "Nuevo Proyecto",
-          placeholderDesc:
-              "Un nuevo proyecto está en camino. Mantente atento a las novedades.",
+          aiopsBadge: "ITOps & Automatización",
+          aiopsTitle: "Rocky Linux AIOps Lab",
+          aiopsDesc:
+              "Plataforma self-hosted de automatización ITOps sobre Rocky Linux — de lab local en k3s a Oracle Cloud Free Tier. n8n orquesta respuestas a incidentes con análisis LLM via OpenCode Go, desplegada con Ansible + OpenTofu, secrets con HashiCorp Vault, CI/CD con Jenkins + GitOps con ArgoCD y hardening de producción para OCI.",
+          aiopsFeature1:
+              "Loop de respuesta a incidentes: Prometheus → Alertmanager → n8n → LLM → Discord",
+          aiopsFeature2:
+              "Observabilidad completa: Prometheus + Loki + Grafana Alloy + dashboards en k3s",
+          aiopsFeature3:
+              "GitOps con ArgoCD: manifiestos desde GitHub auto-desplegados al cluster",
+          aiopsFeature4:
+              "Jenkins self-hosted CI/CD + GitHub Actions — pipelines, lint, multi-stage builds",
+          aiopsFeature5:
+              "Oracle Cloud Free Tier ready: 4 vCPUs ARM, 24 GB RAM, OCI Vault, Object Storage",
+          aiopsFeature6:
+              "Prácticas SRE: SLO/SLI, fail2ban, dnf-automatic, SELinux enforcing, firewalld",
+          aiopsAria: "Ver Rocky Linux AIOps Lab en GitHub",
+          aiopsDocs: "Docs",
           prevAria: "Proyecto anterior",
           nextAria: "Proyecto siguiente",
           slideAria: "Ir a diapositiva",
@@ -122,12 +179,12 @@ const features = [
 ---
 
 <section id="projects" class="section">
-    <div class="container">
-        <p class="section-label reveal">{text.sectionLabel}</p>
-        <h2 class="section-title reveal" style="margin-bottom:0.75rem">
+    <div class="container reveal-group">
+        <p class="section-label reveal-item">{text.sectionLabel}</p>
+        <h2 class="section-title reveal-item" style="margin-bottom:0.75rem">
             {text.sectionTitle}
         </h2>
-        <p class="proj__sub reveal">{text.sectionSub}</p>
+        <p class="proj__sub reveal-item">{text.sectionSub}</p>
     </div>
 
     <!-- ═══ Carousel ═══ -->
@@ -152,46 +209,12 @@ const features = [
         </button>
 
         <div class="carousel__viewport" id="carouselViewport">
-            <!-- ══ Slide 0: Placeholder Project ══ -->
+            <!-- ══ Slide 0: Featured Project ══ -->
             <article
                 class="carousel__slide metal-border"
                 data-glow
-                style="--metal-delay: -5s; --metal-duration: 28s;"
-                data-slide-index="0"
-            >
-                <div class="placeholder-card">
-                    <div class="placeholder-icon">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="48"
-                            height="48"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            stroke-width="1"
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            aria-hidden="true"
-                            ><path d="M12 5v14M5 12h14"></path></svg
-                        >
-                    </div>
-                    <div
-                        class="mini-badge metal-border-subtle"
-                        style="--metal-delay: -1s; --metal-duration: 24s;"
-                    >
-                        {text.placeholderBadge}
-                    </div>
-                    <h4 class="mini-card__title">{text.placeholderTitle}</h4>
-                    <p class="mini-card__desc">{text.placeholderDesc}</p>
-                </div>
-            </article>
-
-            <!-- ══ Slide 1: Featured Project ══ -->
-            <article
-                class="carousel__slide carousel__slide--init metal-border"
-                data-glow
                 style="--metal-delay: -12s; --metal-duration: 32s;"
-                data-slide-index="1"
+                data-slide-index="0"
             >
                 <div class="proj-card__header">
                     <div
@@ -253,9 +276,9 @@ const features = [
                 <div class="proj-card__body">
                     <div class="proj-card__left">
                         <h3 class="proj-card__title">
-                            Simulated Enterprise<br />
+                            Self-Hosted Web<br />
                             <span class="proj-title-accent"
-                                >DevOps Infrastructure Lab</span
+                                >Infrastructure Lab</span
                             >
                         </h3>
 
@@ -314,24 +337,7 @@ const features = [
                                 {text.viewRepo}
                             </a>
 
-                            <div class="proj-roadmap">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="13"
-                                    height="13"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    aria-hidden="true"
-                                    ><path
-                                        d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"
-                                    ></path></svg
-                                >
-                                <span>{text.nextUpdate}</span>
-                            </div>
+
                         </div>
                     </div>
 
@@ -486,6 +492,430 @@ const features = [
                                         ></polyline></svg
                                     >
                                     Uptime Kuma
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- ══ Slide 1: Rocky Linux AIOps Lab ══ -->
+            <article
+                class="carousel__slide carousel__slide--init metal-border"
+                data-glow
+                style="--metal-delay: -5s; --metal-duration: 28s;"
+                data-slide-index="1"
+            >
+                <div class="mini-card__top">
+                    <div
+                        class="mini-badge metal-border-subtle"
+                        style="--metal-delay: -1s; --metal-duration: 24s;"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            ><polygon
+                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                            ></polygon></svg
+                        >
+                        {text.aiopsBadge}
+                    </div>
+                    <a
+                        href="https://github.com/agusm2002/rocky-linux-aiops-lab"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="mini-card__gh-link"
+                        aria-label={text.aiopsAria}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            aria-hidden="true"
+                            ><path
+                                d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+                            ></path></svg
+                        >
+                        <span>GitHub</span>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="11"
+                            height="11"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                            ><path d="M7 17L17 7M17 7H7M17 7v10"></path></svg
+                        >
+                    </a>
+                </div>
+
+                <div class="proj-card__body">
+                    <div class="proj-card__left">
+                        <h4 class="mini-card__title">
+                            ITOps Lab de automatización<br />
+                            <span class="proj-title-accent">· AI-Powered</span>
+                        </h4>
+                        <p class="mini-card__desc">{text.aiopsDesc}</p>
+
+                        <ul class="mini-features" role="list">
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><circle cx="12" cy="12" r="10"
+                                    ></circle><polyline
+                                        points="12 6 12 12 16 14"
+                                    ></polyline></svg
+                                >
+                                {text.aiopsFeature1}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><polyline
+                                        points="22 12 18 12 15 21 9 3 6 12 2 12"
+                                    ></polyline></svg
+                                >
+                                {text.aiopsFeature2}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"
+                                    ></path></svg
+                                >
+                                {text.aiopsFeature3}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                                    ></path></svg
+                                >
+                                {text.aiopsFeature4}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"
+                                    ></path></svg
+                                >
+                                {text.aiopsFeature5}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                                    ></path></svg
+                                >
+                                {text.aiopsFeature6}
+                            </li>
+                        </ul>
+
+                        <div class="mini-stack">
+                            {
+                                aiopsStack.map((t) => (
+                                    <span
+                                        class="mini-spill metal-border-subtle"
+                                        style="--metal-delay: -14s; --metal-duration: 22s;"
+                                    >
+                                        {techLogoMap[t] && (
+                                            <img
+                                                src={`/tech-icons/${techLogoMap[t]}`}
+                                                alt=""
+                                                class="tech-logo-mini"
+                                            />
+                                        )}
+                                        {t}
+                                    </span>
+                                ))
+                            }
+                        </div>
+
+                        <div class="mini-cta-row">
+                            <a
+                                href="/aiops-lab"
+                                class="btn btn-primary metal-border mini-cta mini-cta--primary"
+                                style="--metal-delay: -7s; --metal-duration: 24s;"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"
+                                    ></path><path
+                                        d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"
+                                    ></path></svg
+                                >
+                                {text.aiopsDocs}
+                            </a>
+                            <a
+                                href="https://github.com/agusm2002/rocky-linux-aiops-lab"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="btn btn-ghost metal-border mini-cta"
+                                style="--metal-delay: -7s; --metal-duration: 24s;"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+                                    ></path></svg
+                                >
+                                {text.viewRepo}
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Right: architecture diagram -->
+                    <div class="proj-arch" aria-hidden="true">
+                        <div class="arch-label">Architecture</div>
+                        <div class="arch-diagram aiops-diagram">
+                            <!-- Tier 1: Response -->
+                            <div class="arch-tier">
+                                <div class="arch-tier__label">Response</div>
+                                <div class="arch-tier__nodes">
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/n8n.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name">n8n</span>
+                                    </span>
+                                    <span
+                                        class="arch-tier__node arch-tier__node--accent"
+                                    >
+                                        <img
+                                            src="/tech-icons/openai.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name">LLM</span>
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/discord.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Discord</span
+                                        >
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="arch-tier__connector"></div>
+                            <!-- Tier 2: Observe -->
+                            <div class="arch-tier">
+                                <div class="arch-tier__label">Observe</div>
+                                <div class="arch-tier__nodes">
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/prometheus.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Prometheus</span
+                                        >
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/prometheus.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Alertm.</span
+                                        >
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/loki.png"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name">Loki</span
+                                        >
+                                    </span>
+                                    <span
+                                        class="arch-tier__node arch-tier__node--accent"
+                                    >
+                                        <img
+                                            src="/tech-icons/grafana.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Grafana</span
+                                        >
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="arch-tier__connector"></div>
+                            <!-- Tier 3: Deploy -->
+                            <div class="arch-tier">
+                                <div class="arch-tier__label">Deploy</div>
+                                <div class="arch-tier__nodes">
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/argocd.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >ArgoCD</span
+                                        >
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/jenkins.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Jenkins</span
+                                        >
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/vault.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Vault</span
+                                        >
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="arch-tier__connector"></div>
+                            <!-- Tier 4: Infra -->
+                            <div class="arch-tier">
+                                <div class="arch-tier__label">Infra</div>
+                                <div class="arch-tier__nodes">
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/k3s.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name">k3s</span>
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/ansible.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Ansible</span
+                                        >
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/opentofu.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >OpenTofu</span
+                                        >
+                                    </span>
+                                    <span
+                                        class="arch-tier__node arch-tier__node--accent"
+                                    >
+                                        <img
+                                            src="/tech-icons/oci.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name">OCI</span>
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -715,7 +1145,7 @@ const features = [
     </div>
 
     <div
-        class="carousel__dots"
+        class="carousel__dots reveal"
         id="carouselDots"
         role="tablist"
         aria-label={text.sectionTitle}
@@ -985,8 +1415,8 @@ const features = [
         border-radius: 1rem;
         overflow: hidden;
         transition:
-            transform 0.65s cubic-bezier(0.25, 0.1, 0.25, 1),
-            opacity 0.5s ease;
+            transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+            opacity 0.45s ease;
         opacity: 0;
         cursor: pointer;
         z-index: 1;
@@ -1518,40 +1948,150 @@ const features = [
     }
 
     /* ═══════════════════════════════════════
-       PLACEHOLDER CARD
+       AIOPS TIERED DIAGRAM
     ═══════════════════════════════════════ */
-    .placeholder-card {
+    .aiops-diagram {
         display: flex;
+        flex-direction: column;
+        justify-content: center;
+        flex: 1;
+        gap: 0;
+        width: 100%;
+        padding: 0.25rem 0;
+    }
+
+    .arch-tier {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+        padding: 0.55rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 0.5rem;
+        flex: 1;
+        min-height: 0;
+        width: 100%;
+    }
+
+    .arch-tier__nodes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        align-items: center;
+        flex: 1;
+        align-content: center;
+    }
+
+    .arch-tier__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--green-500);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        flex-shrink: 0;
+    }
+
+    .arch-tier__nodes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
+        align-content: center;
+    }
+
+    .arch-tier__node {
+        display: inline-flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        text-align: center;
-        padding: 3rem 2rem;
-        min-height: 340px;
-        gap: 1.25rem;
+        gap: 0.35rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        padding: 0.5rem 0.35rem;
+        border-radius: 0.5rem;
+        min-width: 56px;
+        transition:
+            background 0.2s,
+            border-color 0.2s;
     }
 
-    .placeholder-icon {
+    .arch-tier__node--accent {
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.07);
+    }
+
+    .arch-tier__name {
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        color: var(--text-dim);
+        line-height: 1;
+        text-align: center;
+    }
+
+    .arch-tier__node--accent .arch-tier__name {
+        color: var(--green-300);
+    }
+
+    .tech-logo {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        opacity: 0.9;
+    }
+
+    .arch-tier__node .tech-logo {
+        filter: brightness(0) invert(1);
+    }
+
+    .arch-tier__node--accent .tech-logo {
+        filter: brightness(0) invert(1);
+    }
+
+    .arch-tier__connector {
+        position: relative;
+        height: 1.4rem;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 72px;
-        height: 72px;
-        border-radius: 50%;
-        border: 1px dashed rgba(255, 255, 255, 0.12);
-        color: var(--green-700);
-        margin-bottom: 0.25rem;
+    }
+
+    .arch-tier__connector::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 0.04),
+            rgba(255, 255, 255, 0.18),
+            rgba(255, 255, 255, 0.04)
+        );
+    }
+
+    .arch-tier__connector::after {
+        content: "";
+        position: absolute;
+        bottom: 0.05rem;
+        width: 5px;
+        height: 5px;
+        border-right: 1.5px solid rgba(255, 255, 255, 0.22);
+        border-bottom: 1.5px solid rgba(255, 255, 255, 0.22);
+        transform: rotate(45deg);
     }
 
     /* ═══════════════════════════════════════
        MINI CARD ELEMENTS (Chrono)
     ═══════════════════════════════════════ */
     .mini-card__title {
-        font-size: var(--text-2xl);
+        font-size: clamp(1.35rem, 2.5vw, 1.7rem);
         font-weight: 700;
         color: var(--green-50);
         margin-bottom: 0.65rem;
         letter-spacing: -0.01em;
+        line-height: 1.15;
     }
 
     .mini-card__desc {
@@ -1605,6 +2145,14 @@ const features = [
         transition: color 0.15s;
     }
 
+    .tech-logo-mini {
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+        filter: brightness(0) invert(1);
+        opacity: 0.85;
+    }
+
     .btn-ghost {
         display: inline-flex;
         align-items: center;
@@ -1631,6 +2179,28 @@ const features = [
 
     .mini-cta {
         margin-top: 0.3rem;
+    }
+
+    .mini-cta-row {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-top: 0.3rem;
+    }
+
+    .mini-cta--primary {
+        background: rgba(255, 255, 255, 0.18);
+        color: #fff;
+        font-weight: 600;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        box-shadow: 0 0 14px rgba(255, 255, 255, 0.08);
+    }
+
+    .mini-cta--primary:hover {
+        background: rgba(255, 255, 255, 0.26);
+        border-color: rgba(255, 255, 255, 0.5);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.14);
+        color: #fff;
     }
 
     /* Demo video */

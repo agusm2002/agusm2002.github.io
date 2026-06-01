@@ -1,0 +1,149 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+const logNodes = [
+    { num: "1", type: "Schedule Trigger", name: "Cron — cada hora", desc: "Dispara el workflow automaticamente cada hora (0 * * * *). No requiere intervencion manual.", detail: "El schedule de n8n usa sintaxis cron estandar. Se puede ajustar la frecuencia sin modificar el resto del workflow." },
+    { num: "2", type: "HTTP Request", name: "Query Loki", desc: "GET a la API de Loki consultando logs con nivel ERROR o WARN de las ultimas 2 horas en el namespace aiops.", detail: "URL: http://loki.aiops.svc.cluster.local:3100/loki/api/v1/query_range. Query: {namespace=\"aiops\"} |~ \"(?i)(error|warn|fail|critical)\". Limit: 50 lineas." },
+    { num: "3", type: "Code", name: "Procesar resultados", desc: "JavaScript que agrupa los logs por servicio, limita a 20 lineas para no exceder tokens del LLM, y limpia timestamps y metadata innecesaria.", detail: "Toma el array de streams de Loki, extrae los valores, agrupa por app label, y genera un resumen estructurado para el prompt del LLM." },
+    { num: "4", type: "HTTP Request", name: "LLM Analysis", desc: "Envia los logs procesados al LLM para que identifique patrones, priorice problemas y sugiera acciones.", detail: "El prompt pide: resumen de problemas detectados, frecuencia de cada uno, prioridad (alta/media/baja), y recomendaciones. Respuesta en Markdown para Discord." },
+    { num: "5", type: "HTTP Request", name: "Discord Report", desc: "Envia el analisis del LLM a Discord como un mensaje estructurado con embed.", detail: "Si no hay errores, envia un mensaje corto: 'Log Analysis: sin errores detectados en la ultima hora'. Si hay, envia el reporte completo del LLM." },
+];
+
+const processCode = [
+    "// Procesar resultados de Loki para el LLM",
+    "const streams = $input.first().json.data.result;",
+    "if (!streams || streams.length === 0) {",
+    "  return [{ summary: 'No errors found' }];",
+    "}",
+    "",
+    "// Agrupar por app y limitar lineas",
+    "const byApp = {};",
+    "streams.forEach(s => {",
+    "  const app = s.stream.app || 'unknown';",
+    "  if (!byApp[app]) byApp[app] = [];",
+    "  s.values.forEach(v => byApp[app].push(v[1]));",
+    "});",
+    "",
+    "// Limitar a 20 lineas total",
+    "let lines = [];",
+    "Object.entries(byApp).forEach(([app, logs]) => {",
+    "  lines.push(`--- ${app} (${logs.length} errors) ---`);",
+    "  lines = lines.concat(logs.slice(0, 5));",
+    "});",
+    "",
+    "return [{ logSummary: lines.slice(0, 20).join('\\n') }];",
+].join("\n");
+---
+
+<DocsLayout
+    title="Workflow 2: Log Analysis - ITOps Automation Lab"
+    description="Phase 5 del Rocky Linux ITOps Automation Lab: analisis automatico de logs con LLM — Loki → n8n → OpenCode Go → reporte en Discord."
+    activePage="workflow-2-log-analysis"
+    lang="en"
+    prev={{ label: "Workflow 1: Incident Response", href: "/en/aiops-lab/phase-5/workflow-1-incident-response" }}
+    next={{ label: "Workflow 3: Incident Simulation", href: "/en/aiops-lab/phase-5/workflow-3-incident-simulation" }}
+>
+    <div class="docs-page">
+        <div class="f5-hero"><div class="f5-hero__top"><div class="f5-hero__badge">Phase 5.2</div><span class="f5-hero__time">Workflow 2</span></div><h1 class="f5-hero__title">Log Analysis<span class="f5-hero__accent"> · Loki → LLM → Discord</span></h1><p class="f5-hero__subtitle">Cada hora, este workflow consulta Loki buscando errores en los logs del cluster, procesa los resultados con JavaScript para optimizar el uso de tokens, los analiza con LLM y genera un reporte de salud del sistema en Discord.</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">Flujo del Workflow</h2></div>
+            <p class="overview-lead">Cinco nodos. A diferencia del Workflow 1 que es reactivo (webhook), este es proactivo (cron). No espera a que algo falle — busca proactivamente patrones de error en los logs.</p>
+            <div class="nodes-list">
+                {logNodes.map((n) => (
+                    <div class="node-card">
+                        <div class="node-card__header"><div class="node-card__num">{n.num}</div><div class="node-card__meta"><span class="node-card__type">{n.type}</span><span class="node-card__name">{n.name}</span></div></div>
+                        <p class="node-card__desc">{n.desc}</p>
+                        <div class="node-card__detail">{n.detail}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">Query de Loki</h2></div>
+            <p class="overview-lead">La query busca patrones de error en los logs usando regex. Se limita a 50 resultados para mantener el tiempo de respuesta bajo y no saturar al LLM con tokens innecesarios.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">HTTP Request — Query Loki</span></div>
+                <pre><code>GET http://loki.aiops.svc.cluster.local:3100/loki/api/v1/query_range
+
+Query Params:
+  query: {'{namespace="aiops"} |~ "(?i)(error|warn|fail|critical)"'}
+  start: {'{{ $now.minus(7200) }}'}
+  end:   {'{{ $now }}'}
+  limit: 50</code></pre>
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">Procesamiento con JavaScript</h2></div>
+            <p class="overview-lead">El nodo Code procesa los resultados de Loki antes de enviarlos al LLM. Agrupa por aplicacion, limita lineas y limpia metadata. Sin este paso, los logs crudos excederian el limite de tokens del modelo.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">Nodo Code — JavaScript</span></div>
+                <pre><code>{processCode}</code></pre>
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">04</span><h2 class="overview-h2">Variantes del Workflow</h2></div>
+            <p class="overview-lead">El workflow de analisis de logs tiene dos variantes complementarias que corren con diferentes frecuencias.</p>
+            <div class="var-grid">
+                <div class="var-card">
+                    <div class="var-card__name">Daily Health Report</div>
+                    <div class="var-card__freq">Cada dia a las 8:00 AM</div>
+                    <div class="var-card__desc">Consulta 3 metricas de Prometheus (disponibilidad 24h, memoria, pods activos) y genera un reporte formateado en Discord. Es el resumen matutino del estado del cluster.</div>
+                </div>
+                <div class="var-card">
+                    <div class="var-card__name">Pod Restart Detector</div>
+                    <div class="var-card__freq">Cada 15 minutos</div>
+                    <div class="var-card__desc">Consulta Prometheus buscando pods con mas de 3 reinicios en la ultima hora. Disenio silencioso — solo notifica si encuentra algo. Evita fatiga de alertas.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Siguiente: Workflow 3 — Incident Simulation</h3><p class="cta-card__desc">El momento de la verdad: grabar el loop completo crash → alerta → LLM → Discord. La demo que va en el README del proyecto.</p></div><a href="/en/aiops-lab/phase-5/workflow-3-incident-simulation" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Simulation</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f5-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f5-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f5-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f5-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f5-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f5-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f5-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .nodes-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .node-card { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.75rem 0.9rem; }
+    .node-card__header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.35rem; }
+    .node-card__num { display: flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); font-family: var(--font-mono); font-size: var(--text-2xs); font-weight: 600; color: var(--green-400); flex-shrink: 0; }
+    .node-card__meta { display: flex; align-items: center; gap: 0.4rem; }
+    .node-card__type { font-family: var(--font-mono); font-size: var(--text-3xs); color: var(--text-dim); padding: 0.1rem 0.3rem; border-radius: 0.2rem; background: rgba(255,255,255,0.04); border: 1px solid var(--border); }
+    .node-card__name { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600; color: var(--green-300); }
+    .node-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; margin-bottom: 0.3rem; }
+    .node-card__detail { font-size: var(--text-xs); color: var(--text-dim); line-height: 1.45; padding-top: 0.35rem; border-top: 1px solid var(--border); }
+    .code-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .code-block__header { display: flex; align-items: center; padding: 0.45rem 0.85rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .code-block__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .code-block pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .code-block code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+    .var-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 0.5rem; }
+    .var-card { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.85rem; }
+    .var-card__name { font-family: var(--font-display); font-size: var(--text-sm); font-weight: 600; color: var(--green-50); margin-bottom: 0.15rem; }
+    .var-card__freq { font-family: var(--font-mono); font-size: var(--text-3xs); color: var(--text-dim); margin-bottom: 0.4rem; }
+    .var-card__desc { font-size: var(--text-xs); color: var(--text-muted); line-height: 1.5; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 700px) { .var-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

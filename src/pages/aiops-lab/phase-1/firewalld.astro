@@ -1,0 +1,1095 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+
+// Helpers para escapar {{ }} de Jinja2/Ansible en bloques de código
+const O = "{{";
+const C = "}}";
+
+const portsOpened = [
+    { port: "2222/tcp", service: "SSH custom", reason: "Puerto SSH после hardening. El puerto 22 se cierra, todo el tráfico SSH migra a este puerto.", critical: true },
+    { port: "6443/tcp", service: "k3s API Server", reason: "API de Kubernetes. Sin este puerto, kubectl y ArgoCD no pueden comunicarse con el cluster.", critical: true },
+    { port: "80/tcp", service: "HTTP — Ingress", reason: "Tráfico HTTP para el ingress controller. Redirige a HTTPS en producción, pero se mantiene abierto para ACME challenges.", critical: false },
+    { port: "443/tcp", service: "HTTPS — Ingress", reason: "Tráfico HTTPS para Grafana público y cualquier servicio expuesto via ingress.", critical: false },
+    { port: "8200/tcp", service: "HashiCorp Vault", reason: "API de Vault. Accesible solo desde dentro del cluster — el ingress no expone este puerto.", critical: false },
+];
+
+const zones = [
+    {
+        name: "public",
+        desc: "Zona por defecto. Se usa para la interfaz de red principal. Nivel de confianza: no se confía en otros equipos de la red.",
+        used: true,
+    },
+    {
+        name: "internal",
+        desc: "Confianza moderada. Útil si hubiera múltiples VMs en una VCN privada de OCI comunicándose entre sí.",
+        used: false,
+    },
+    {
+        name: "trusted",
+        desc: "Todo el tráfico aceptado. Nunca se usa en este proyecto — equivale a desactivar el firewall para esa interfaz.",
+        used: false,
+    },
+    {
+        name: "drop",
+        desc: "Todo el tráfico entrante se descarta sin respuesta. Útil para interfaces que no deberían recibir nada.",
+        used: false,
+    },
+];
+
+const cliExamples = [
+    { cmd: "firewall-cmd --state", desc: "Verificar si firewalld está corriendo", out: "running" },
+    { cmd: "firewall-cmd --get-default-zone", desc: "Zona por defecto", out: "public" },
+    { cmd: "firewall-cmd --list-all", desc: "Reglas completas de la zona activa", out: "public (active)\n  target: default\n  ports: 2222/tcp 6443/tcp 80/tcp 443/tcp 8200/tcp\n  services: \n  ..." },
+    { cmd: "firewall-cmd --list-ports", desc: "Solo puertos abiertos", out: "2222/tcp 6443/tcp 80/tcp 443/tcp 8200/tcp" },
+    { cmd: "firewall-cmd --add-port=8080/tcp --permanent && firewall-cmd --reload", desc: "Abrir un puerto nuevo (ejemplo)", out: "success" },
+];
+---
+
+<DocsLayout
+    title="Firewalld & Seguridad de Red - ITOps Automation Lab"
+    description="Fase 1.2 del Rocky Linux ITOps Automation Lab: firewalld con zonas, puertos abiertos para k3s, Vault e ingress, y hardening de red con eliminación del puerto SSH estándar."
+    activePage="firewalld"
+    prev={{
+        label: "Configuración de SELinux",
+        href: "/aiops-lab/phase-1/selinux",
+    }}
+    next={{
+        label: "SSH Hardening",
+        href: "/aiops-lab/phase-1/ssh-hardening",
+    }}
+>
+    <div class="docs-page">
+        <!-- ═══ Hero ═══ -->
+        <div class="f1-hero">
+            <div class="f1-hero__top">
+                <div class="f1-hero__badge">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    Fase 1.2
+                </div>
+                <span class="f1-hero__time">Rocky Linux 9 · firewalld</span>
+            </div>
+
+            <h1 class="f1-hero__title">
+                Firewalld
+                <span class="f1-hero__accent">· Seguridad de Red</span>
+            </h1>
+            <p class="f1-hero__subtitle">
+                El firewall de red que controla qué puertos y servicios son
+                accesibles desde fuera de la VM. Usa zonas en lugar de reglas
+                planas — cada interfaz de red pertenece a una zona con un nivel
+                de confianza distinto.
+            </p>
+        </div>
+
+        <!-- ═══ Zonas ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">01</span>
+                <h2 class="overview-h2">Zonas, no Reglas Planas</h2>
+            </div>
+            <p class="overview-lead">
+                A diferencia de <code>iptables</code> o UFW donde las reglas se
+                aplican globalmente, firewalld organiza la seguridad por zonas.
+                Cada interfaz de red se asigna a exactamente una zona, y esa
+                zona define qué tráfico se acepta. Es el modelo estándar en
+                RHEL, Fedora y Rocky Linux.
+            </p>
+
+            <div class="zones-grid">
+                {zones.map((z) => (
+                    <div class={`zone-card ${z.used ? "zone-card--active" : ""}`}>
+                        <div class="zone-card__header">
+                            <code class="zone-card__name">{z.name}</code>
+                            {z.used && <span class="zone-card__badge">en uso</span>}
+                        </div>
+                        <p class="zone-card__desc">{z.desc}</p>
+                    </div>
+                ))}
+            </div>
+
+            <p class="overview-text">
+                El proyecto usa exclusivamente la zona <code>public</code>. Es
+                la zona correcta para una VM con una interfaz de red que da a
+                internet o a una red local no confiable. En Oracle Cloud, las
+                VMs también usan <code>public</code> — la seguridad adicional
+                viene de los OCI Network Security Groups, no de cambiar la zona
+                de firewalld.
+            </p>
+        </div>
+
+        <!-- ═══ Puerto SSH ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">02</span>
+                <h2 class="overview-h2">Puerto SSH: de 22 a 2222</h2>
+            </div>
+            <p class="overview-lead">
+                Mover SSH del puerto 22 a un puerto no estándar es una de las
+                medidas de hardening más simples y efectivas. Reduce el ruido
+                de escaneos automáticos y fuerza a los atacantes a descubrir
+                el puerto antes de intentar conectarse.
+            </p>
+
+            <div class="flow-row">
+                <div class="flow-step flow-step--old">
+                    <div class="flow-step__label">Antes</div>
+                    <div class="flow-step__port">
+                        <code>tcp/22</code>
+                    </div>
+                    <div class="flow-step__svc">servicio ssh</div>
+                </div>
+                <div class="flow-arrow">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+                <div class="flow-step flow-step--new">
+                    <div class="flow-step__label">Después</div>
+                    <div class="flow-step__port">
+                        <code>tcp/2222</code>
+                    </div>
+                    <div class="flow-step__svc">servicio ssh</div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>Importante:</strong> firewalld cierra el puerto 22
+                    y abre el 2222. Pero SSH todavía escucha en el 22 hasta que
+                    el rol <code>ssh-hardening</code> lo cambie. Por eso el
+                    orden en <code>site.yml</code> es firewalld → selinux →
+                    ssh-hardening: primero se prepara la red, después se cambia
+                    el servicio.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Puertos ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">03</span>
+                <h2 class="overview-h2">Puertos Abiertos</h2>
+            </div>
+            <p class="overview-lead">
+                Cada puerto abierto en la VM tiene una razón específica. No se
+                abre ningún puerto por comodidad — solo los necesarios para que
+                el stack funcione.
+            </p>
+
+            <div class="ports-list">
+                {portsOpened.map((p) => (
+                    <div class="port-row">
+                        <div class="port-row__port">
+                            <code>{p.port}</code>
+                            {p.critical && <span class="port-row__crit">crítico</span>}
+                        </div>
+                        <div class="port-row__info">
+                            <div class="port-row__svc">{p.service}</div>
+                            <div class="port-row__reason">{p.reason}</div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div class="info-card info-card--warn">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>Ningún puerto de base de datos está abierto.</strong>
+                    Prometheus, Loki y Vault usan almacenamiento interno en el
+                    cluster. Sus puertos no necesitan estar expuestos a la red
+                    externa — solo son accesibles dentro de k3s via ClusterIP.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ El Rol ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">04</span>
+                <h2 class="overview-h2">El Rol firewalld</h2>
+            </div>
+            <p class="overview-lead">
+                El rol aplica la política de red en seis tareas. La filosofía
+                es: instalar, activar, abrir solo lo necesario y cerrar lo que
+                sobra.
+            </p>
+
+            <h3 class="subsection-title">Defaults</h3>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">roles/firewalld/defaults/main.yml</span>
+                </div>
+                <pre><code>firewalld_zone: public
+
+firewalld_services: []
+
+firewalld_ports:
+    - "2222/tcp"   # SSH custom port
+    - "6443/tcp"   # k3s API server
+    - "80/tcp"     # HTTP — Ingress
+    - "443/tcp"    # HTTPS — Ingress
+    - "8200/tcp"   # HashiCorp Vault
+
+firewalld_ssh_port: 2222</code></pre>
+            </div>
+
+            <h3 class="subsection-title">Tasks</h3>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">roles/firewalld/tasks/main.yml</span>
+                </div>
+                <pre><code>- name: Asegurar que firewalld esté instalado
+  ansible.builtin.dnf:
+    name: firewalld
+    state: present
+
+- name: Asegurar que firewalld esté activo y habilitado
+  ansible.builtin.systemd:
+    name: firewalld
+    state: started
+    enabled: true
+
+- name: Establecer zona default
+  ansible.builtin.command:
+    cmd: firewall-cmd --set-default-zone={O} firewalld_zone {C}
+  changed_when: false
+
+- name: Abrir servicios necesarios
+  ansible.posix.firewalld:
+    service: "{O} item {C}"
+    zone: "{O} firewalld_zone {C}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop: "{O} firewalld_services {C}"
+
+- name: Abrir puertos necesarios
+  ansible.posix.firewalld:
+    port: "{O} item {C}"
+    zone: "{O} firewalld_zone {C}"
+    permanent: true
+    state: enabled
+    immediate: true
+  loop: "{O} firewalld_ports {C}"
+
+- name: Quitar servicio ssh (puerto 22)
+  ansible.posix.firewalld:
+    service: ssh
+    zone: "{O} firewalld_zone {C}"
+    permanent: true
+    state: disabled
+    immediate: true</code></pre>
+            </div>
+
+            <p class="overview-text">
+                La última tarea es clave: elimina el servicio <code>ssh</code>
+                (puerto 22) de la zona public. Si no se hiciera, el puerto 22
+                seguiría abierto aunque SSH ya no escuche allí — una superficie
+                de ataque innecesaria.
+            </p>
+        </div>
+
+        <!-- ═══ firewalld vs UFW ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">05</span>
+                <h2 class="overview-h2">firewalld vs UFW</h2>
+            </div>
+            <p class="overview-lead">
+                UFW es el firewall estándar en Ubuntu. Firewalld es el estándar en
+                RHEL/Rocky. Conocer ambos es relevante en entornos mixtos.
+            </p>
+
+            <div class="compare-grid">
+                <div class="compare-card compare-card--fw">
+                    <div class="compare-card__header">
+                        <span class="compare-card__label">RHEL/Rocky</span>
+                        <span class="compare-card__title">firewalld</span>
+                    </div>
+                    <div class="compare-card__body">
+                        <ul>
+                            <li>Zonas con niveles de confianza por interfaz</li>
+                            <li>Cambios en caliente sin reiniciar (--permanent + --reload)</li>
+                            <li>Reglas enriquecidas (rich rules) para filtrado avanzado</li>
+                            <li>Integración con NetworkManager — cambios según red conectada</li>
+                            <li>Backend: nftables (antes iptables)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="compare-card compare-card--ufw">
+                    <div class="compare-card__header">
+                        <span class="compare-card__label">Ubuntu</span>
+                        <span class="compare-card__title">UFW</span>
+                    </div>
+                    <div class="compare-card__body">
+                        <ul>
+                            <li>Reglas planas — sin concepto de zonas</li>
+                            <li>Sintaxis simple: ufw allow/deny</li>
+                            <li>Perfiles de aplicación predefinidos</li>
+                            <li>Ideal para firewalls simples de una VM</li>
+                            <li>Backend: iptables</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <p class="overview-text">
+                Para un proyecto como este, firewalld es la elección correcta
+                porque Rocky Linux lo trae por defecto y las zonas son útiles
+                en Oracle Cloud: la interfaz pública va a <code>public</code> y
+                una interfaz privada entre VMs podría ir a <code>internal</code>.
+            </p>
+        </div>
+
+        <!-- ═══ CLI Reference ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">06</span>
+                <h2 class="overview-h2">CLI Reference</h2>
+            </div>
+            <p class="overview-lead">
+                Comandos esenciales para inspeccionar y modificar firewalld
+                manualmente. Todas las operaciones que requieren persistencia
+                necesitan el flag <code>--permanent</code>.
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">firewall-cmd</span>
+                </div>
+                <div class="terminal-block__body">
+                    {cliExamples.map((ex, i) => (
+                        <>
+                            <div class="t-line"><span class="t-comment"># {ex.desc}</span></div>
+                            <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">{ex.cmd}</span></div>
+                            {ex.out.split("\n").map((line) => (
+                                <div class="t-line"><span class="t-out">{line}</span></div>
+                            ))}
+                            {i < cliExamples.length - 1 && <div class="t-line t-line--spacer" />}
+                        </>
+                    ))}
+                </div>
+            </div>
+
+            <div class="info-card info-card--tip">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>Regla de oro:</strong> usar siempre
+                    <code>--permanent</code> seguido de
+                    <code>firewall-cmd --reload</code>. Los cambios sin
+                    <code>--permanent</code> se pierden al reiniciar firewalld
+                    o la VM.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Verificación ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">07</span>
+                <h2 class="overview-h2">Verificar que Funcionó</h2>
+            </div>
+            <p class="overview-lead">
+                Después de correr el playbook, estos comandos confirman que
+                firewalld está activo y que solo los puertos necesarios están
+                expuestos.
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">verify-firewalld.sh</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-comment"># firewalld debe estar corriendo</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> systemctl is-active firewalld</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">active</span></span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Zona por defecto</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> firewall-cmd --get-default-zone</span></div>
+                    <div class="t-line"><span class="t-out">public</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Puertos abiertos — 22 no debe aparecer</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> firewall-cmd --list-ports</span></div>
+                    <div class="t-line"><span class="t-out">2222/tcp 6443/tcp 80/tcp 443/tcp 8200/tcp</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Servicio ssh debe estar ausente de la zona public</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> firewall-cmd --list-services</span></div>
+                    <div class="t-line"><span class="t-out">(vacío — sin servicios habilitados)</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Verificar que el puerto 22 está cerrado desde fuera</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> ss -tlnp | grep -E ':22 |:2222 '</span></div>
+                    <div class="t-line"><span class="t-out">LISTEN 0  128  *:2222  *:*  users:(("sshd",pid=891,fd=3))</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">(22 no aparece — solo 2222)</span></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ CTA ═══ -->
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card">
+                <div class="cta-card__content">
+                    <h3 class="cta-card__title">Siguiente: SSH Hardening</h3>
+                    <p class="cta-card__desc">
+                        Con firewalld protegiendo la red y SELinux protegiendo
+                        el kernel, la siguiente capa es el hardening del
+                        servicio SSH: sin root login, sin password auth, puerto
+                        custom y límites de conexión.
+                    </p>
+                </div>
+                <a href="/aiops-lab/phase-1/ssh-hardening" class="cta-card__btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>
+                    SSH Hardening
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page {
+        max-width: 740px;
+    }
+
+    /* ── Hero ── */
+    .f1-hero {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.75rem;
+        margin-bottom: 3rem;
+    }
+
+    .f1-hero__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+
+    .f1-hero__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+
+    .f1-hero__time {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.4rem;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .f1-hero__title {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 700;
+        color: var(--green-50);
+        line-height: 1.15;
+        margin-bottom: 0.5rem;
+    }
+
+    .f1-hero__accent {
+        color: var(--green-500);
+        font-weight: 500;
+    }
+
+    .f1-hero__subtitle {
+        font-size: var(--text-md);
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 560px;
+    }
+
+    /* ── Sections ── */
+    .overview-section {
+        margin-bottom: 3rem;
+    }
+
+    .overview-section--cta {
+        margin-top: 1rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .section-num {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-600);
+        font-weight: 500;
+    }
+
+    .overview-h2 {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0;
+    }
+
+    .overview-lead {
+        font-size: var(--text-base);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1.5rem;
+        max-width: 560px;
+    }
+
+    .overview-text {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1rem;
+    }
+
+    .overview-text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    .subsection-title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 1.5rem 0 0.75rem;
+    }
+
+    /* ── Info Cards ── */
+    .info-card {
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.875rem 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .info-card--tip {
+        border-color: rgba(34, 197, 94, 0.2);
+        background: rgba(34, 197, 94, 0.03);
+    }
+
+    .info-card--tip .info-card__icon {
+        color: var(--green-400);
+    }
+
+    .info-card--warn {
+        border-color: rgba(234, 179, 8, 0.25);
+        background: rgba(234, 179, 8, 0.04);
+    }
+
+    .info-card--warn .info-card__icon {
+        color: #eab308;
+    }
+
+    .info-card__icon {
+        flex-shrink: 0;
+        color: var(--green-400);
+        margin-top: 0.1rem;
+    }
+
+    .info-card__icon svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+    }
+
+    .info-card__text strong {
+        color: var(--green-50);
+        font-weight: 600;
+    }
+
+    .info-card__text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    /* ── Zones Grid ── */
+    .zones-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .zone-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.85rem 1rem;
+        transition: background 0.2s;
+    }
+
+    .zone-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .zone-card--active {
+        border-color: rgba(34, 197, 94, 0.2);
+        background: rgba(34, 197, 94, 0.03);
+    }
+
+    .zone-card__header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .zone-card__name {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+
+    .zone-card__badge {
+        font-family: var(--font-mono);
+        font-size: var(--text-3xs);
+        color: var(--green-400);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.2rem;
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .zone-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.45;
+        margin: 0;
+    }
+
+    /* ── Flow Row (SSH port migration) ── */
+    .flow-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .flow-step {
+        text-align: center;
+        flex: 1;
+    }
+
+    .flow-step__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.4rem;
+    }
+
+    .flow-step__port {
+        margin-bottom: 0.2rem;
+    }
+
+    .flow-step__port code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xl);
+        font-weight: 700;
+        color: var(--green-50);
+        background: none;
+        padding: 0;
+    }
+
+    .flow-step__svc {
+        font-size: var(--text-xs);
+        color: var(--text-muted);
+    }
+
+    .flow-step--old .flow-step__port code {
+        color: var(--text-dim);
+        text-decoration: line-through;
+        text-decoration-color: rgba(239, 68, 68, 0.5);
+    }
+
+    .flow-step--new .flow-step__port code {
+        color: var(--green-400);
+    }
+
+    .flow-arrow {
+        color: var(--green-500);
+        flex-shrink: 0;
+    }
+
+    .flow-arrow svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    /* ── Ports List ── */
+    .ports-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        margin-bottom: 1rem;
+    }
+
+    .port-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+    }
+
+    .port-row__port {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        flex-shrink: 0;
+        min-width: 90px;
+    }
+
+    .port-row__port code {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+
+    .port-row__crit {
+        font-family: var(--font-mono);
+        font-size: var(--text-3xs);
+        color: #eab308;
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.2rem;
+        background: rgba(234, 179, 8, 0.1);
+        border: 1px solid rgba(234, 179, 8, 0.2);
+    }
+
+    .port-row__info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .port-row__svc {
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-bottom: 0.1rem;
+    }
+
+    .port-row__reason {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.45;
+    }
+
+    /* ── Compare Grid ── */
+    .compare-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+    }
+
+    .compare-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+    }
+
+    .compare-card__header {
+        margin-bottom: 0.75rem;
+    }
+
+    .compare-card__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .compare-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-top: 0.1rem;
+    }
+
+    .compare-card__body ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .compare-card__body li {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        padding-left: 1rem;
+        position: relative;
+    }
+
+    .compare-card__body li::before {
+        content: "—";
+        position: absolute;
+        left: 0;
+        color: var(--text-dim);
+    }
+
+    .compare-card--fw {
+        border-color: rgba(34, 197, 94, 0.15);
+        background: rgba(34, 197, 94, 0.02);
+    }
+
+    .compare-card--ufw {
+        border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    /* ── Code Block ── */
+    .code-block {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .code-block__header {
+        display: flex;
+        align-items: center;
+        padding: 0.45rem 0.85rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .code-block__file {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+    }
+
+    .code-block pre {
+        margin: 0;
+        padding: 0.85rem;
+        overflow-x: auto;
+    }
+
+    .code-block code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-muted);
+        line-height: 1.55;
+    }
+
+    /* ── Terminal ── */
+    .terminal-block {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        margin-bottom: 1.5rem;
+    }
+
+    .terminal-block__bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .terminal-block__dots {
+        display: flex;
+        gap: 0.3rem;
+    }
+
+    .terminal-block__dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+        display: block;
+    }
+
+    .terminal-block__title {
+        color: var(--text-dim);
+        font-size: var(--text-2xs);
+        margin-left: auto;
+        margin-right: auto;
+        padding-right: 2.5rem;
+    }
+
+    .terminal-block__body {
+        padding: 0.65rem 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    .t-line {
+        line-height: 1.5;
+    }
+
+    .t-line--spacer {
+        height: 0.35rem;
+    }
+
+    .t-prompt {
+        color: var(--green-600);
+        margin-right: 0.3rem;
+    }
+
+    .t-cmd {
+        color: var(--green-300);
+    }
+
+    .t-out {
+        color: var(--text-dim);
+        padding-left: 1.1rem;
+    }
+
+    .t-ok {
+        color: var(--green-400);
+    }
+
+    .t-comment {
+        color: rgba(255, 255, 255, 0.25);
+        font-style: italic;
+        padding-left: 0;
+    }
+
+    /* ── CTA ── */
+    .cta-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+    }
+
+    .cta-card__content {
+        flex: 1;
+    }
+
+    .cta-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0 0 0.25rem;
+    }
+
+    .cta-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0;
+    }
+
+    .cta-card__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--green-50);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.6rem 1rem;
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.2s, border-color 0.2s;
+    }
+
+    .cta-card__btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--border-hover);
+    }
+
+    .cta-card__btn svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+        .compare-grid,
+        .zones-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .cta-card {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .flow-row {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .flow-arrow {
+            transform: rotate(90deg);
+        }
+    }
+</style>

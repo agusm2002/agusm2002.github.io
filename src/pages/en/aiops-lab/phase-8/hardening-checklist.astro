@@ -1,0 +1,70 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+const checks = [
+    { layer: "SO", items: ["Rocky Linux 9 minimal (ARM64)", "dnf update completo", "Timezone y locale configurados", "dnf-automatic: solo security updates", "Kernel hardening: SELinux enforcing"] },
+    { layer: "Red", items: ["firewalld activo con zona public", "Puerto 22 cerrado — SSH migrado a 2222", "Solo 5 puertos abiertos (2222, 6443, 80, 443, 8200)", "Sin servicios innecesarios expuestos"] },
+    { layer: "SSH", items: ["PermitRootLogin no", "PasswordAuthentication no", "MaxAuthTries 3", "LoginGraceTime 30s", "Puerto custom 2222"] },
+    { layer: "Kernel", items: ["SELinux enforcing", "container_manage_cgroup on", "virt_use_nfs on", "policycoreutils-python-utils instalado"] },
+    { layer: "Servicios", items: ["fail2ban: jail SSH activa (5 intentos, 1h ban)", "dnf-automatic: timer activo con security-only", "sshd config validada con sshd -t", "No servicios innecesarios corriendo"] },
+    { layer: "OCI", items: ["NSG: bastion solo SSH desde IP admin", "NSG: k3s solo SSH/API desde bastion", "OCI Cloud Guard activado (gratis)", "Budget alert en $0"] },
+];
+---
+
+<DocsLayout
+    title="Hardening Checklist - ITOps Automation Lab"
+    description="Phase 8 del Rocky Linux ITOps Automation Lab: checklist completo de hardening aplicado en el proyecto — capa por capa, del SO a la nube."
+    activePage="hardening-checklist"
+    lang="en"
+    prev={{ label: "Fail2Ban", href: "/en/aiops-lab/phase-8/fail2ban" }}
+    next={{ label: "Architecture OCI", href: "/en/aiops-lab/phase-9/architecture" }}
+>
+    <div class="docs-page">
+        <div class="f8-hero"><div class="f8-hero__top"><div class="f8-hero__badge">Phase 8</div><span class="f8-hero__time">Checklist</span></div><h1 class="f8-hero__title">Hardening Checklist<span class="f8-hero__accent"> · Security por Capas</span></h1><p class="f8-hero__subtitle">El resumen de todas las medidas de hardening aplicadas en el proyecto, organizadas por capa. Util como referencia rapida en entrevistas y como checklist de verificacion antes de exponer las VMs a internet en Oracle Cloud.</p></div>
+
+        <div class="overview-section">
+            {checks.map((c) => (
+                <div class="layer-card">
+                    <div class="layer-card__header">{c.layer}</div>
+                    <div class="layer-card__items">
+                        {c.items.map((i) => <div class="chk-item"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span>{i}</span></div>)}
+                    </div>
+                </div>
+            ))}
+        </div>
+
+        <div class="info-card"><div class="info-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="info-card__text"><strong>Argumento de entrevista:</strong> "El proyecto aplica hardening en 6 capas: SO, red, SSH, kernel, servicios y nube. No es una VM con todo abierto — cada capa agrega una restriccion. Si un atacante pasa una, tiene las otras cinco."</div></div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Phase 8 Completada</h3><p class="cta-card__desc">Security documentada. La Phase 9 cubre la migracion a Oracle Cloud con OpenTofu y arquitectura bastion + k3s.</p></div><a href="/en/aiops-lab/phase-9/architecture" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Phase 9 · OCI</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f8-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f8-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f8-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f8-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f8-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f8-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f8-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 2rem; } .overview-section--cta { margin-top: 1rem; }
+    .layer-card { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; margin-bottom: 0.6rem; }
+    .layer-card__header { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin-bottom: 0.5rem; }
+    .layer-card__items { display: flex; flex-direction: column; gap: 0.25rem; }
+    .chk-item { display: flex; align-items: center; gap: 0.4rem; font-size: var(--text-sm); color: var(--text-muted); }
+    .chk-item svg { width: 12px; height: 12px; color: var(--green-400); flex-shrink: 0; }
+    .info-card { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+    .info-card--tip { border-color: rgba(34,197,94,0.2); background: rgba(34,197,94,0.03); }
+    .info-card--tip .info-card__icon { color: var(--green-400); }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

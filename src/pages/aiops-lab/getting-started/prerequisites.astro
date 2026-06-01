@@ -1,0 +1,1275 @@
+---
+import DocsLayout from "/Users/agustinmonti/Documents/dev/agusm2002.github.io/src/layouts/DocsLayout.astro";
+
+const techLogoMap: Record<string, string> = {
+    "Rocky Linux": "rockylinux.svg",
+    K3s: "k3s.svg",
+    Ansible: "ansible.svg",
+    OpenTofu: "opentofu.svg",
+    ArgoCD: "argocd.svg",
+    Jenkins: "jenkins.svg",
+    N8N: "n8n.svg",
+    Grafana: "grafana.svg",
+    Prometheus: "prometheus.svg",
+    "HashiCorp Vault": "vault.svg",
+    "Oracle Cloud": "oci.svg",
+};
+
+const hardwareReqs = [
+    {
+        label: "RAM",
+        value: "8 GB mínimo",
+        detail: "16 GB recomendado: k3s + Prometheus + Loki + n8n corren simultáneamente",
+        icon: '<rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="10" x2="10" y2="14"/><line x1="14" y1="10" x2="14" y2="14"/><line x1="18" y1="10" x2="18" y2="14"/>',
+    },
+    {
+        label: "Disco",
+        value: "50 GB mínimo",
+        detail: "Loki y container images consumen rápido. 80 GB con headroom para Jenkins",
+        icon: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
+    },
+    {
+        label: "vCPUs",
+        value: "2 mínimo",
+        detail: "4 recomendados. La VM Rocky Linux necesita compilar e instalar k3s + workloads",
+        icon: '<rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M15 20v2M2 15h2M20 15h2M9 2v2M9 20v2M2 9h2M20 9h2"/>',
+    },
+    {
+        label: "Virtualización",
+        value: "UTM / libvirt / VirtualBox",
+        detail: "UTM en Mac ARM, libvirt en Linux. La VM Rocky es ARM64 o x86_64",
+        icon: '<rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>',
+    },
+];
+
+const localTools = [
+    {
+        name: "Git",
+        logo: "git.svg",
+        check: "git --version",
+        minVersion: "2.x",
+        desc: "Clonar el repo y trabajar con los manifiestos de ArgoCD",
+    },
+    {
+        name: "kubectl",
+        logo: "kubernetes.svg",
+        check: "kubectl version --client",
+        minVersion: "1.28+",
+        desc: "Interactuar con el cluster k3s: aplicar manifiestos, debuggear pods",
+    },
+    {
+        name: "Ansible",
+        logo: "ansible.svg",
+        check: "ansible --version",
+        minVersion: "2.15+",
+        desc: "Provisionar la VM Rocky Linux y configurar el hardening base",
+    },
+    {
+        name: "OpenTofu",
+        logo: "opentofu.svg",
+        check: "tofu version",
+        minVersion: "1.7+",
+        desc: "IaC local (provider Kubernetes) y Oracle Cloud (provider OCI)",
+    },
+    {
+        name: "SSH Client",
+        logo: "terminal.svg",
+        check: "ssh -V",
+        minVersion: "8.x+",
+        desc: "Acceso a la VM y al bastion en Oracle Cloud",
+    },
+    {
+        name: "OCI CLI",
+        logo: "oci.svg",
+        check: "oci --version",
+        minVersion: "3.x+",
+        desc: "Solo para Fase 9: interactuar con Oracle Cloud desde terminal",
+    },
+];
+
+const vmSoftware = [
+    { name: "Rocky Linux 9", version: "9.4+", logo: "rockylinux.svg", note: "ISO Minimal o DVD: ARM64 en UTM, x86_64 en otros hipervisores" },
+    { name: "k3s", version: "1.29+", logo: "k3s.svg", note: "Se instala via script, no requiere pre-instalación" },
+    { name: "SELinux", version: "Enforcing", logo: "rockylinux.svg", note: "Viene activado por defecto en Rocky 9. No desactivar." },
+    { name: "firewalld", version: "1.3+", logo: "rockylinux.svg", note: "Backend de firewall. Ansible lo configura en Fase 1." },
+];
+
+const cloudReqs = [
+    {
+        title: "Oracle Cloud Free Tier",
+        desc: "Cuenta Always Free con 4 vCPUs ARM Ampere A1 + 24 GB RAM. No requiere tarjeta para recursos Free Tier.",
+        icon: '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+        phase: "Fase 9",
+        link: "https://www.oracle.com/cloud/free/",
+    },
+    {
+        title: "OCI CLI + Config",
+        desc: "Autenticación configurada con API key o Instance Principal. Requiere compartment y region definidos.",
+        icon: '<polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/>',
+        phase: "Fase 9",
+        link: "https://docs.oracle.com/en-us/iaas/Content/API/Concepts/cliconcepts.htm",
+    },
+    {
+        title: "OpenCode Go API Key",
+        desc: "Para los workflows de n8n con LLM. Plan free disponible — compatible con OpenAI chat completions.",
+        icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+        phase: "Fase 5",
+        link: "https://opencode.ai/docs/es/go/",
+    },
+    {
+        title: "Discord Webhook URL",
+        desc: "Canal de Discord con webhook configurado — destino de las notificaciones del incident response.",
+        icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+        phase: "Fase 5",
+        link: "https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks",
+    },
+];
+
+const knowledgeReqs = [
+    {
+        area: "Linux",
+        level: "Intermedio",
+        desc: "Navegación en terminal, systemd, journalctl, permisos, SELinux básico.",
+        topics: ["systemd", "journalctl", "firewalld", "SELinux", "dnf"],
+    },
+    {
+        area: "Kubernetes",
+        level: "Básico–Intermedio",
+        desc: "Pods, Deployments, Services, ConfigMaps, Namespaces. k3s simplifica mucho pero los conceptos son los mismos.",
+        topics: ["Pods", "Deployments", "Services", "ConfigMaps", "kubectl"],
+    },
+    {
+        area: "Git",
+        level: "Básico",
+        desc: "Clone, commit, push, pull, branching.",
+        topics: ["clone", "commit", "push", "pull"],
+    },
+    {
+        area: "Networking",
+        level: "Básico",
+        desc: "IPs, puertos, DNS, SSH, HTTP.",
+        topics: ["TCP/IP", "DNS", "SSH", "HTTP", "Ingress"],
+    },
+    {
+        area: "IaC",
+        level: "Básico",
+        desc: "Ansible y OpenTofu se usan desde cero. Si nunca los usaste, las fases iniciales cubren lo necesario.",
+        topics: ["YAML", "variables", "módulos", "playbooks"],
+    },
+];
+
+const verifyCommands = [
+    { cmd: "git --version", expected: "git version 2.x" },
+    { cmd: "kubectl version --client", expected: "Client Version: v1.28+" },
+    { cmd: "ansible --version", expected: "ansible [core 2.15+]" },
+    { cmd: "tofu version", expected: "OpenTofu v1.7+" },
+    { cmd: "ssh -V", expected: "OpenSSH_8.x" },
+    { cmd: "uname -m", expected: "arm64 / aarch64 / x86_64" },
+];
+---
+
+<DocsLayout
+    title="Prerequisites - ITOps Automation Lab"
+    description="Requisitos de hardware, software y conocimiento para el Rocky Linux ITOps Automation Lab: entorno local con UTM y migración a Oracle Cloud."
+    activePage="prerequisites"
+    prev={{
+        label: "Overview",
+        href: "/aiops-lab/",
+    }}
+    next={{
+        label: "Quick Start",
+        href: "/aiops-lab/getting-started/quick-start",
+    }}
+>
+    <div class="docs-page">
+        <!-- ═══ Header ═══ -->
+        <div class="prereq-hero">
+            <div class="prereq-hero__top">
+                <div class="prereq-hero__badge">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    ><path
+                            d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                        ></path></svg
+                    >
+                    Pre-Flight Check
+                </div>
+                <span class="prereq-hero__time"
+                    >~30 min de preparación</span
+                >
+            </div>
+
+            <h1 class="prereq-hero__title">
+                Prerrequisitos
+                <span class="prereq-hero__accent">· Antes de empezar</span>
+            </h1>
+            <p class="prereq-hero__subtitle">
+                Hardware, herramientas y conocimiento necesario para levantar el
+                lab local y migrar a Oracle Cloud Free Tier. Cada sección
+                indica desde qué fase se necesita.
+            </p>
+        </div>
+
+        <!-- ═══ Hardware ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">01</span>
+                <h2 class="overview-h2">Hardware & Entorno</h2>
+            </div>
+            <p class="overview-lead">
+                El lab corre en una única VM Rocky Linux dentro de UTM (Mac
+                ARM) o libvirt/VirtualBox. Estas son las specs mínimas para que
+                k3s + todo el stack funcione sin OOM kills.
+            </p>
+
+            <div class="hw-grid">
+                {
+                    hardwareReqs.map((req) => (
+                        <div class="hw-card">
+                            <div class="hw-card__icon">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <Fragment set:html={req.icon} />
+                                </svg>
+                            </div>
+                            <div class="hw-card__content">
+                                <div class="hw-card__label">{req.label}</div>
+                                <div class="hw-card__value">{req.value}</div>
+                                <div class="hw-card__detail">{req.detail}</div>
+                            </div>
+                        </div>
+                    ))
+                }
+            </div>
+
+            <div class="prereq-callout">
+                <div class="prereq-callout__icon">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    ><circle cx="12" cy="12" r="10"/><line
+                            x1="12"
+                            y1="8"
+                            x2="12"
+                            y2="12"/><line
+                            x1="12"
+                            y1="16"
+                            x2="12.01"
+                            y2="16"/></svg>
+                </div>
+                <div class="prereq-callout__text">
+                    <strong>Oracle Cloud Free Tier:</strong> 4 vCPUs ARM Ampere
+                    A1 + 24 GB RAM — costo $0. La VM del lab local puede ser más
+                    chica, pero en OCI necesitas 18 GB para vm-k3s y 6 GB para
+                    vm-bastion.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Herramientas Locales ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">02</span>
+                <h2 class="overview-h2">Herramientas Locales</h2>
+            </div>
+            <p class="overview-lead">
+                Software necesario en la máquina local antes de la Fase
+                1. OCI CLI solo se necesita a partir de la Fase 9.
+            </p>
+
+            <div class="tools-list">
+                {
+                    localTools.map((tool) => (
+                        <div class="tool-row">
+                            <div class="tool-row__logo">
+                                <img
+                                    src={`/tech-icons/${tool.logo}`}
+                                    alt={`${tool.name} logo`}
+                                    class="tech-logo"
+                                    width="20"
+                                    height="20"
+                                />
+                            </div>
+                            <div class="tool-row__info">
+                                <div class="tool-row__name">
+                                    {tool.name}
+                                    <span class="tool-row__version"
+                                        >≥ {tool.minVersion}</span
+                                    >
+                                </div>
+                                <div class="tool-row__desc">{tool.desc}</div>
+                            </div>
+                            <div class="tool-row__check">
+                                <code>{tool.check}</code>
+                            </div>
+                        </div>
+                    ))
+                }
+            </div>
+        </div>
+
+        <!-- ═══ VM Rocky Linux ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">03</span>
+                <h2 class="overview-h2">Dentro de la VM</h2>
+            </div>
+            <p class="overview-lead">
+                Lo que corre dentro de la VM Rocky Linux 9. Ansible instala la
+                mayoría. Solo se necesita la ISO para el install inicial.
+            </p>
+
+            <div class="vm-grid">
+                {
+                    vmSoftware.map((sw) => (
+                        <div class="vm-card">
+                            <img
+                                src={`/tech-icons/${sw.logo}`}
+                                alt={`${sw.name} logo`}
+                                class="vm-card__logo"
+                                width="20"
+                                height="20"
+                            />
+                            <div class="vm-card__content">
+                                <div class="vm-card__name">
+                                    {sw.name}
+                                    <span class="vm-card__version"
+                                        >{sw.version}</span
+                                    >
+                                </div>
+                                <div class="vm-card__note">{sw.note}</div>
+                            </div>
+                        </div>
+                    ))
+                }
+            </div>
+
+            <div class="prereq-terminal">
+                <div class="t-bar">
+                    <div class="t-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <span class="t-title">Rocky Linux 9 — Post-Install</span>
+                </div>
+                <div class="t-body">
+                    <div class="t-line">
+                        <span class="t-comment"># Verificar SELinux enforcing</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-prompt">$</span>
+                        <span class="t-cmd">getenforce</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-out"><span class="t-ok">Enforcing</span></span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-comment"># Verificar firewalld activo</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-prompt">$</span>
+                        <span class="t-cmd">systemctl is-active firewalld</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-out"><span class="t-ok">active</span></span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-comment"># Clonar el repo</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-prompt">$</span>
+                        <span class="t-cmd"
+                            >git clone https://github.com/agusm2002/rocky-linux-aiops-lab.git</span
+                        >
+                    </div>
+                    <div class="t-line">
+                        <span class="t-out"
+                            >Cloning into 'rocky-linux-aiops-lab'...</span
+                        >
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Cuentas & API Keys ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">04</span>
+                <h2 class="overview-h2">Cuentas & API Keys</h2>
+            </div>
+            <p class="overview-lead">
+                Credenciales y cuentas externas. No las necesitas todas desde el
+                inicio. Cada una indica desde qué fase se requiere.
+            </p>
+
+            <div class="cloud-grid">
+                {
+                    cloudReqs.map((req) => (
+                        <div class="cloud-card">
+                            <div class="cloud-card__header">
+                                <div class="cloud-card__icon">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="1.75"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    >
+                                        <Fragment set:html={req.icon} />
+                                    </svg>
+                                </div>
+                                <span class="cloud-card__phase">{req.phase}</span>
+                            </div>
+                            <h3 class="cloud-card__title">{req.title}</h3>
+                            <p class="cloud-card__desc">{req.desc}</p>
+                            <a
+                                href={req.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="cloud-card__link"
+                            >
+                                Documentación
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="11"
+                                    height="11"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                ><path
+                                        d="M7 17L17 7M17 7H7M17 7v10"
+                                    ></path></svg
+                                >
+                            </a>
+                        </div>
+                    ))
+                }
+            </div>
+        </div>
+
+        <!-- ═══ Conocimiento ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">05</span>
+                <h2 class="overview-h2">Conocimiento Previo</h2>
+            </div>
+            <p class="overview-lead">
+                No se requiere ser experto en nada de esto. Con manejo básico de
+                terminal y disposición a googlear, las fases guían paso a
+                paso.
+            </p>
+
+            <div class="knowledge-list">
+                {
+                    knowledgeReqs.map((k) => (
+                        <div class="knowledge-card">
+                            <div class="knowledge-card__header">
+                                <span class="knowledge-card__area">{k.area}</span>
+                                <span class="knowledge-card__level">{k.level}</span>
+                            </div>
+                            <p class="knowledge-card__desc">{k.desc}</p>
+                            <div class="knowledge-card__tags">
+                                {k.topics.map((t) => (
+                                    <span class="knowledge-tag">{t}</span>
+                                ))}
+                            </div>
+                        </div>
+                    ))
+                }
+            </div>
+        </div>
+
+        <!-- ═══ Quick Verify ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">06</span>
+                <h2 class="overview-h2">Verificación Rápida</h2>
+            </div>
+            <p class="overview-lead">
+                Ejecutar estos comandos en la terminal antes de empezar. Si todos
+                responden sin error, el entorno está listo para la Fase 1.
+            </p>
+
+            <div class="prereq-terminal">
+                <div class="t-bar">
+                    <div class="t-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <span class="t-title">preflight-check.sh</span>
+                </div>
+                <div class="t-body">
+                    {
+                        verifyCommands.map((c, i) => (
+                            <>
+                                <div class="t-line">
+                                    <span class="t-prompt">$</span>
+                                    <span class="t-cmd">{c.cmd}</span>
+                                </div>
+                                <div class="t-line">
+                                    <span class="t-out"
+                                        ><span class="t-ok">✓</span> {c.expected}</span
+                                    >
+                                </div>
+                                {i < verifyCommands.length - 1 && (
+                                    <div class="t-line t-line--spacer" />
+                                )}
+                            </>
+                        ))
+                    }
+                    <div class="t-line t-line--spacer" />
+                    <div class="t-line">
+                        <span class="t-comment"># Si todo dice ✓ → listo para la Fase 1</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-comment"># Si algo falla → instalar antes de continuar</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="prereq-callout prereq-callout--warn">
+                <div class="prereq-callout__icon">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    ><path
+                            d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"
+                        /><line x1="12" y1="9" x2="12" y2="13"/><line
+                            x1="12"
+                            y1="17"
+                            x2="12.01"
+                            y2="17"/></svg>
+                </div>
+                <div class="prereq-callout__text">
+                    <strong>No desactivar SELinux.</strong> El proyecto está
+                    diseñado para correr con SELinux en <code>Enforcing</code>.
+                    Si se configura en Permissive o Disabled, se enmascaran
+                    problemas que aparecerán en producción.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ CTA ═══ -->
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card">
+                <div class="cta-card__content">
+                    <h3 class="cta-card__title">Todo listo</h3>
+                    <p class="cta-card__desc">
+                        Si la verificación rápida pasó sin errores, continuar con
+                        Quick Start para levantar el stack completo.
+                    </p>
+                </div>
+                <a href="/aiops-lab/getting-started/quick-start" class="cta-card__btn">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    ><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>
+                    Architecture
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page {
+        max-width: 740px;
+    }
+
+    /* ── Hero ── */
+    .prereq-hero {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.75rem;
+        margin-bottom: 3rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .prereq-hero__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+
+    .prereq-hero__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+    .prereq-hero__badge svg {
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+    }
+
+    .prereq-hero__time {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.4rem;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .prereq-hero__title {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 700;
+        color: var(--green-50);
+        line-height: 1.15;
+        margin-bottom: 0.5rem;
+    }
+    .prereq-hero__accent {
+        color: var(--green-500);
+        font-weight: 500;
+    }
+
+    .prereq-hero__subtitle {
+        font-size: var(--text-md);
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 540px;
+    }
+
+    /* ── Sections ── */
+    .overview-section {
+        margin-bottom: 3rem;
+    }
+    .overview-section--cta {
+        margin-top: 1rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
+    .section-num {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-600);
+        font-weight: 500;
+    }
+    .overview-h2 {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0;
+    }
+    .overview-lead {
+        font-size: var(--text-base);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1.5rem;
+        max-width: 560px;
+    }
+
+    /* ── Hardware Grid ── */
+    .hw-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .hw-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        display: flex;
+        gap: 0.875rem;
+        transition: background 0.2s;
+    }
+    .hw-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .hw-card__icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 0.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        color: var(--green-400);
+        flex-shrink: 0;
+    }
+    .hw-card__icon svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        display: block;
+    }
+
+    .hw-card__content {
+        min-width: 0;
+    }
+    .hw-card__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.2rem;
+    }
+    .hw-card__value {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-bottom: 0.3rem;
+    }
+    .hw-card__detail {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+    }
+
+    /* ── Callout ── */
+    .prereq-callout {
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.875rem 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+    .prereq-callout--warn {
+        border-color: rgba(234, 179, 8, 0.25);
+        background: rgba(234, 179, 8, 0.04);
+    }
+    .prereq-callout--warn .prereq-callout__icon {
+        color: #eab308;
+    }
+
+    .prereq-callout__icon {
+        flex-shrink: 0;
+        color: var(--green-400);
+        margin-top: 0.1rem;
+    }
+    .prereq-callout__icon svg {
+        width: 14px;
+        height: 14px;
+        display: block;
+    }
+    .prereq-callout__text strong {
+        color: var(--green-50);
+        font-weight: 600;
+    }
+    .prereq-callout__text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    /* ── Tools List ── */
+    .tools-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .tool-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.85rem 1rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        transition: background 0.2s;
+    }
+    .tool-row:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .tool-row__logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 0.4rem;
+        flex-shrink: 0;
+    }
+    .tool-row__logo .tech-logo {
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+        filter: brightness(0) invert(1);
+        opacity: 0.85;
+        display: block;
+    }
+
+    .tool-row__info {
+        flex: 1;
+        min-width: 0;
+    }
+    .tool-row__name {
+        font-family: var(--font-display);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-50);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .tool-row__version {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        font-weight: 400;
+    }
+    .tool-row__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.45;
+        margin-top: 0.15rem;
+    }
+
+    .tool-row__check {
+        flex-shrink: 0;
+    }
+    .tool-row__check code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 0.3rem 0.55rem;
+        border-radius: 0.35rem;
+        border: 1px solid var(--border);
+        white-space: nowrap;
+    }
+
+    /* ── VM Grid ── */
+    .vm-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .vm-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.65rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        transition: background 0.2s;
+    }
+    .vm-card:hover {
+        background: rgba(255, 255, 255, 0.035);
+    }
+
+    .vm-card__logo {
+        width: 20px;
+        height: 20px;
+        object-fit: contain;
+        filter: brightness(0) invert(1);
+        opacity: 0.85;
+        flex-shrink: 0;
+        margin-top: 0.15rem;
+    }
+    .vm-card__content {
+        min-width: 0;
+    }
+    .vm-card__name {
+        font-family: var(--font-display);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-50);
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        flex-wrap: wrap;
+    }
+    .vm-card__version {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--green-400);
+        font-weight: 400;
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+    }
+    .vm-card__note {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin-top: 0.2rem;
+    }
+
+    /* ── Terminal ── */
+    .prereq-terminal {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        margin-bottom: 1.25rem;
+    }
+
+    .t-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+    .t-dots {
+        display: flex;
+        gap: 0.3rem;
+    }
+    .t-dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+        display: block;
+    }
+    .t-title {
+        color: var(--text-dim);
+        font-size: var(--text-2xs);
+        margin-left: auto;
+        margin-right: auto;
+        padding-right: 2.5rem;
+    }
+
+    .t-body {
+        padding: 0.65rem 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+    .t-line {
+        line-height: 1.5;
+    }
+    .t-line--spacer {
+        height: 0.35rem;
+    }
+    .t-prompt {
+        color: var(--green-600);
+        margin-right: 0.3rem;
+    }
+    .t-cmd {
+        color: var(--green-300);
+    }
+    .t-out {
+        color: var(--text-dim);
+        padding-left: 1.1rem;
+    }
+    .t-ok {
+        color: var(--green-400);
+    }
+    .t-comment {
+        color: rgba(255, 255, 255, 0.25);
+        font-style: italic;
+    }
+
+    /* ── Cloud Grid ── */
+    .cloud-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+    }
+
+    .cloud-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        transition: background 0.2s;
+    }
+    .cloud-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .cloud-card__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.65rem;
+    }
+    .cloud-card__icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 0.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        color: var(--green-400);
+    }
+    .cloud-card__icon svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        display: block;
+    }
+
+    .cloud-card__phase {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.3rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+    }
+
+    .cloud-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-bottom: 0.35rem;
+        margin-top: 0;
+    }
+    .cloud-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0 0 0.75rem 0;
+    }
+
+    .cloud-card__link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    .cloud-card__link:hover {
+        color: var(--green-50);
+    }
+    .cloud-card__link svg {
+        width: 11px;
+        height: 11px;
+        flex-shrink: 0;
+    }
+
+    /* ── Knowledge ── */
+    .knowledge-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .knowledge-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.65rem;
+        padding: 1rem 1.25rem;
+        transition: background 0.2s;
+    }
+    .knowledge-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .knowledge-card__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 0.4rem;
+    }
+    .knowledge-card__area {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+    }
+    .knowledge-card__level {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--green-400);
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.3rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+    }
+
+    .knowledge-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0 0 0.6rem 0;
+    }
+
+    .knowledge-card__tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.3rem;
+    }
+    .knowledge-tag {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        padding: 0.15rem 0.45rem;
+        border-radius: 0.25rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+
+    /* ── CTA ── */
+    .cta-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: 1.5rem 1.75rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        flex-wrap: wrap;
+    }
+
+    .cta-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-lg);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-bottom: 0.25rem;
+        margin-top: 0;
+    }
+    .cta-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        max-width: 380px;
+        margin: 0;
+    }
+
+    .cta-card__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--green-50);
+        padding: 0.6rem 1.1rem;
+        border-radius: 0.5rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border);
+        transition:
+            background 0.2s,
+            border-color 0.2s;
+        flex-shrink: 0;
+        text-decoration: none;
+    }
+    .cta-card__btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--border-hover);
+    }
+    .cta-card__btn svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+        .hw-grid {
+            grid-template-columns: 1fr;
+        }
+        .cloud-grid {
+            grid-template-columns: 1fr;
+        }
+        .vm-grid {
+            grid-template-columns: 1fr;
+        }
+        .tool-row {
+            flex-wrap: wrap;
+        }
+        .tool-row__check {
+            width: 100%;
+            margin-left: 2.75rem;
+        }
+        .cta-card {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+    }
+    @media (max-width: 420px) {
+        .prereq-hero__subtitle {
+            font-size: var(--text-base);
+        }
+    }
+</style>

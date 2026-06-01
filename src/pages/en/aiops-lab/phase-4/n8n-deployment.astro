@@ -1,0 +1,138 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+const workflows = [
+    { name: "Test OpenCode Connection", trigger: "Manual", desc: "Verifica la conexion con la API de OpenCode Go. Workflow de prueba de 2 nodos antes de construir workflows complejos." },
+    { name: "Incident Response", trigger: "Webhook /alertmanager", desc: "Recibe alertas de Alertmanager, extrae el contexto, consulta al LLM para analisis de causa raiz y acciones correctivas, y notifica a Discord." },
+    { name: "Log Analysis", trigger: "Cron — cada hora", desc: "Consulta Loki buscando logs ERROR/WARN de las ultimas 2 horas, los procesa con LLM y genera un reporte de salud en Discord." },
+    { name: "Health Check", trigger: "Cron — cada 5 min", desc: "Verifica el estado de los pods en el namespace aiops. Si detecta Failed o CrashLoopBackOff, analiza con LLM y notifica. Si todo OK, escribe un log informativo." },
+    { name: "Pod Restart Detector", trigger: "Cron — cada 15 min", desc: "Consulta Prometheus buscando pods con mas de 3 reinicios en la ultima hora. Diseniado para ser silencioso — no genera ruido si no hay problemas." },
+    { name: "Daily Health Report", trigger: "Cron — 8:00 AM", desc: "Genera un reporte diario con disponibilidad promedio, uso de memoria y pods activos. Lo envia a Discord como resumen matutino." },
+    { name: "ArgoCD Sync Monitor", trigger: "Cron — cada 30 min", desc: "Se autentica con ArgoCD y consulta el estado de sync de las aplicaciones. Si detecta OutOfSync, notifica a Discord." },
+];
+
+const n8nEnvVars = [
+    { var: "N8N_HOST", value: "n8n.local", desc: "Hostname para la UI y webhooks. En lab local se resuelve via /etc/hosts o port-forward." },
+    { var: "N8N_METRICS", value: "true", desc: "Habilita el endpoint /metrics para que Prometheus pueda scrapear metricas de n8n." },
+    { var: "N8N_METRICS_INCLUDE_DEFAULT_METRICS", value: "true", desc: "Incluye metricas de Node.js (event loop lag, GC, memoria heap)." },
+    { var: "N8N_SECURE_COOKIE", value: "false", desc: "Cookies sin flag Secure. En lab local no hay HTTPS. En OCI con Ingress + TLS se cambia a true." },
+    { var: "N8N_BLOCK_ENV_ACCESS_IN_NODE", value: "false", desc: "Permite que los nodos HTTP Request lean variables de entorno. Necesario para usar la API key de OpenCode sin hardcodearla." },
+];
+---
+
+<DocsLayout
+    title="n8n Deployment - ITOps Automation Lab"
+    description="Phase 4 del Rocky Linux ITOps Automation Lab: n8n como plataforma de automatizacion con 7 workflows preconfigurados — respuesta a incidentes con LLM via OpenCode Go API."
+    activePage="n8n-deployment"
+    lang="en"
+    prev={{ label: "Grafana Dashboards", href: "/en/aiops-lab/phase-4/grafana-dashboards" }}
+    next={{ label: "OpenCode Go API Setup", href: "/en/aiops-lab/phase-5/opencode-go-api" }}
+>
+    <div class="docs-page">
+        <div class="f4-hero"><div class="f4-hero__top"><div class="f4-hero__badge">Phase 4.5</div><span class="f4-hero__time">n8n</span></div><h1 class="f4-hero__title">n8n Deployment<span class="f4-hero__accent"> · Automatizacion</span></h1><p class="f4-hero__subtitle">n8n es el cerebro operativo del stack. Recibe alertas de Prometheus via Alertmanager, consulta a un LLM (OpenCode Go API) para analisis, y notifica a Discord. Siete workflows preconfigurados cubren respuesta a incidentes, analisis de logs, health checks y monitoreo GitOps.</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">Configuracion</h2></div>
+            <p class="overview-lead">n8n se configura con variables de entorno no sensibles en un ConfigMap. Los secrets (encryption key, API keys) se inyectan via Vault Agent — no estan en el ConfigMap ni en el Deployment.</p>
+            <div class="env-list">
+                {n8nEnvVars.map((e) => (
+                    <div class="env-row"><code class="env-row__var">{e.var}</code><code class="env-row__val">{e.value}</code><div class="env-row__desc">{e.desc}</div></div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">Workflows Preconfigurados</h2></div>
+            <p class="overview-lead">Siete workflows cubren el ciclo completo de operaciones. Se importan desde JSON en <code>k3s/manifests/n8n/workflows/</code>. Cada uno resuelve un problema concreto.</p>
+            <div class="wf-list">
+                {workflows.map((w) => (
+                    <div class="wf-card"><div class="wf-card__header"><span class="wf-card__name">{w.name}</span><span class="wf-card__trigger">{w.trigger}</span></div><div class="wf-card__desc">{w.desc}</div></div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">El Loop de Respuesta a Incidentes</h2></div>
+            <p class="overview-lead">El workflow mas importante del proyecto: Alertmanager dispara un webhook en n8n, que consulta a OpenCode Go API y notifica a Discord con el analisis del LLM. Todo en menos de 15 segundos.</p>
+            <div class="loop-viz">
+                <div class="loop-step"><div class="loop-step__icon">⚠️</div><div class="loop-step__title">Prometheus</div><div class="loop-step__sub">Alerta disparada</div></div>
+                <div class="loop-arrow">→</div>
+                <div class="loop-step"><div class="loop-step__icon">📡</div><div class="loop-step__title">Alertmanager</div><div class="loop-step__sub">Webhook a n8n</div></div>
+                <div class="loop-arrow">→</div>
+                <div class="loop-step"><div class="loop-step__icon">⚙️</div><div class="loop-step__title">n8n</div><div class="loop-step__sub">Extrae + consulta LLM</div></div>
+                <div class="loop-arrow">→</div>
+                <div class="loop-step"><div class="loop-step__icon">🤖</div><div class="loop-step__title">OpenCode Go</div><div class="loop-step__sub">Analisis + sugerencias</div></div>
+                <div class="loop-arrow">→</div>
+                <div class="loop-step"><div class="loop-step__icon">💬</div><div class="loop-step__title">Discord</div><div class="loop-step__sub">Notificacion</div></div>
+            </div>
+            <div class="info-card info-card--tip"><div class="info-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="info-card__text"><strong>Este loop es el diferenciador del portfolio.</strong> La Phase 5 detalla cada workflow con codigo, screenshots y la Incident Simulation grabada. El valor no esta en instalar n8n — esta en demostrar el loop end-to-end con LLM.</div></div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">04</span><h2 class="overview-h2">Storage y Persistencia</h2></div>
+            <p class="overview-lead">n8n usa SQLite como base de datos interna con un PVC de 5Gi. Los workflows se almacenan en la DB. El directorio de workflows en el repo es para import/export y versionado en Git.</p>
+            <div class="specs-row">
+                <div class="spec-mini"><div class="spec-mini__val">5 Gi</div><div class="spec-mini__label">PVC size</div></div>
+                <div class="spec-mini"><div class="spec-mini__val">SQLite</div><div class="spec-mini__label">Database</div></div>
+                <div class="spec-mini"><div class="spec-mini__val">UID 1000</div><div class="spec-mini__label">Security Context</div></div>
+                <div class="spec-mini"><div class="spec-mini__val">/healthz</div><div class="spec-mini__label">Health Check</div></div>
+            </div>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Phase 4 Completada</h3><p class="cta-card__desc">El observability stack esta corriendo. La Phase 5 pone a funcionar los workflows de n8n con LLM — el verdadero diferenciador del proyecto.</p></div><a href="/en/aiops-lab/phase-5/opencode-go-api" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Phase 5</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f4-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f4-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f4-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f4-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f4-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f4-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f4-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .overview-text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.65; margin-bottom: 1rem; }
+    .env-list { display: flex; flex-direction: column; gap: 0.3rem; }
+    .env-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.75rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.4rem; font-size: var(--text-xs); }
+    .env-row__var { font-family: var(--font-mono); font-weight: 600; color: var(--green-300); min-width: 180px; background: none; padding: 0; }
+    .env-row__val { font-family: var(--font-mono); color: var(--text-dim); min-width: 80px; background: none; padding: 0; }
+    .env-row__desc { color: var(--text-muted); line-height: 1.4; }
+    .wf-list { display: flex; flex-direction: column; gap: 0.35rem; }
+    .wf-card { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.55rem 0.8rem; }
+    .wf-card__header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; }
+    .wf-card__name { font-family: var(--font-display); font-size: var(--text-sm); font-weight: 600; color: var(--green-50); }
+    .wf-card__trigger { font-family: var(--font-mono); font-size: var(--text-3xs); color: var(--text-dim); padding: 0.1rem 0.3rem; border-radius: 0.2rem; background: rgba(255,255,255,0.04); border: 1px solid var(--border); }
+    .wf-card__desc { font-size: var(--text-xs); color: var(--text-muted); line-height: 1.45; }
+    .loop-viz { display: flex; align-items: center; gap: 0.3rem; padding: 1rem 0.75rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; margin-bottom: 1rem; overflow-x: auto; }
+    .loop-step { text-align: center; padding: 0.5rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.5rem; flex-shrink: 0; min-width: 80px; }
+    .loop-step__icon { font-size: 1.2rem; margin-bottom: 0.1rem; }
+    .loop-step__title { font-family: var(--font-mono); font-size: var(--text-2xs); font-weight: 600; color: var(--green-300); }
+    .loop-step__sub { font-size: var(--text-4xs); color: var(--text-dim); }
+    .loop-arrow { color: var(--green-500); font-weight: 700; flex-shrink: 0; }
+    .info-card { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+    .info-card--tip { border-color: rgba(34,197,94,0.2); background: rgba(34,197,94,0.03); }
+    .info-card--tip .info-card__icon { color: var(--green-400); }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .specs-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 0.5rem; }
+    .spec-mini { text-align: center; padding: 0.75rem 0.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; }
+    .spec-mini__val { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; color: var(--green-400); margin-bottom: 0.15rem; }
+    .spec-mini__label { font-family: var(--font-mono); font-size: var(--text-3xs); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 700px) { .specs-row { grid-template-columns: repeat(2,1fr); } .loop-viz { flex-direction: column; } .loop-arrow { display: none; } }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } .env-row { flex-wrap: wrap; } .env-row__var { min-width: auto; width: 100%; } }
+</style>

@@ -1,0 +1,73 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+const rows = [
+    { aspect: "Secrets", lab: "HashiCorp Vault (self-hosted)", oci: "OCI Vault (managed)" },
+    { aspect: "Object Storage", lab: "MinIO (pod en k3s)", oci: "OCI Object Storage" },
+    { aspect: "Acceso SSH", lab: "Directo (VM local)", oci: "Solo via vm-bastion" },
+    { aspect: "Firewall", lab: "firewalld", oci: "firewalld + OCI NSG" },
+    { aspect: "Monitoreo", lab: "Solo Prometheus", oci: "Prometheus + OCI Cloud Guard" },
+    { aspect: "IP publica", lab: "No (UTM NAT)", oci: "vm-k3s :443 (Grafana demo)" },
+    { aspect: "GitOps", lab: "ArgoCD", oci: "ArgoCD (mismo repo)" },
+    { aspect: "Costo", lab: "$0 (maquina local)", oci: "$0 (Free Tier)" },
+];
+---
+
+<DocsLayout title="Lab vs Production - ITOps Automation Lab" activePage="lab-vs-prod"
+    prev={{ label: "MinIO → OCI Object Storage", href: "/aiops-lab/phase-9/minio-to-oci" }}
+    next={{ label: "SLI Definitions", href: "/aiops-lab/phase-10/sli-definitions" }}
+>
+    <div class="docs-page">
+        <div class="h"><div class="h__top"><div class="h__badge">Fase 9.4</div><span class="h__time">Lab vs Production</span></div><h1 class="h__title">Lab vs Production<span class="h__accent"> · Que Cambia</span></h1><p class="h__sub">El mismo proyecto, dos entornos. Ocho componentes que cambian entre el lab local (UTM, macOS) y Oracle Cloud Free Tier. La migracion ES el argumento de arquitectura.</p></div>
+
+        <div class="info info--warn" style="border-color: rgba(234,179,8,0.3); background: rgba(234,179,8,0.04);">
+            <div class="info__icon" style="color: #eab308;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div class="info__text">
+                <b style="color: #eab308;">🚧 En desarrollo — Pendiente de ejecución</b><br/>
+                La migración a Oracle Cloud Free Tier no pudo completarse porque al momento de intentarlo no había disponibilidad de VMs Ampere A1 ARM64 en la región de São Paulo. Toda la arquitectura, el código de OpenTofu y los playbooks de Ansible están listos; la fase práctica en la nube queda pendiente de disponibilidad de recursos.
+            </div>
+        </div>
+
+        <div class="tbl"><div class="tbl__h"><span>Aspecto</span><span>Lab Local</span><span>Oracle Cloud</span></div>
+            {rows.map((r) => (
+                <div class="tbl__r"><span class="tbl__a">{r.aspect}</span><span>{r.lab}</span><span>{r.oci}</span></div>
+            ))}
+        </div>
+
+        <div class="info info--tip"><div class="info__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="info__text"><b>"No migre el proyecto a la nube, lo disenie para correr en dos entornos desde el dia 1."</b> El mismo OpenTofu, los mismos playbooks de Ansible, los mismos manifiestos de Kubernetes. Solo cambia el inventario y el provider de Tofu.</div></div>
+
+        <div class="sec sec--cta">
+            <div class="cta"><div class="cta__content"><h3 class="cta__title">Fase 9 Completada</h3><p class="cta__desc">Oracle Cloud documentado. Fase 10: SLO/SLI y documentacion final.</p></div><a href="/aiops-lab/phase-10/sli-definitions" class="cta__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Fase 10</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style>
+    .docs-page { max-width: 740px; }
+    .h { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .h__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .h__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .h__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .h__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .h__accent { color: var(--green-500); font-weight: 500; }
+    .h__sub { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .sec--cta { margin-top: 1rem; }
+    .tbl { border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .tbl__h { display: grid; grid-template-columns: 1fr 1fr 1fr; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); padding: 0.5rem 0.75rem; font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+    .tbl__r { display: grid; grid-template-columns: 1fr 1fr 1fr; border-bottom: 1px solid var(--border); padding: 0.55rem 0.75rem; font-size: var(--text-sm); color: var(--text-muted); }
+    .tbl__r:last-child { border-bottom: none; }
+    .tbl__a { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-50); font-weight: 500; }
+    .info { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 2rem; }
+    .info--tip { border-color: rgba(34,197,94,0.2); background: rgba(34,197,94,0.03); }
+    .info__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info__icon svg { width: 16px; height: 16px; display: block; }
+    .info__text b { color: var(--green-50); font-weight: 600; }
+    .cta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta__content { flex: 1; }
+    .cta__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 600px) { .cta { flex-direction: column; align-items: flex-start; } .tbl__h, .tbl__r { grid-template-columns: 1fr; } .tbl__h span:not(:first-child), .tbl__r span:not(:first-child) { border-top: 1px solid var(--border); padding-top: 0.2rem; } }
+</style>

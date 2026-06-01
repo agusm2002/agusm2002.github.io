@@ -1,0 +1,1014 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+// Helpers to escape {{ }} from Jinja2/Ansible in code blocks
+const O = "{{";
+const C = "}}";
+
+const sshDirectives = [
+    {
+        directive: "PermitRootLogin no",
+        default: "yes",
+        desc: "Disables direct root login via SSH. Forces logging in as a regular user and using sudo to escalate privileges. It is the most important hardening measure.",
+        risk: "Without this, an attacker who obtains root's password has full remote access to the system.",
+    },
+    {
+        directive: "PasswordAuthentication no",
+        default: "yes",
+        desc: "Disables password authentication. Only SSH key (public key) access is allowed. Completely eliminates the risk of brute force on passwords — there is nothing to guess.",
+        risk: "If enabled without having an SSH key configured on the VM, access is lost. Requires prior planning.",
+    },
+    {
+        directive: "Port 2222",
+        default: "22",
+        desc: "Changes the SSH port from the standard 22 to 2222. It is not security through obscurity — it is noise reduction. Mass automated scans constantly hit port 22. Moving it keeps fail2ban logs clean of false positives.",
+        risk: "Low. Just requires remembering to use -p 2222 when connecting. Targeted scans will still find the port — but they stop being automated.",
+    },
+    {
+        directive: "MaxAuthTries 3",
+        default: "6",
+        desc: "Closes the connection after 3 failed authentication attempts. Combined with fail2ban, an attacker has 3 attempts before being banned for 1 hour.",
+        risk: "None operationally. If you fail 3 times, you just open a new connection.",
+    },
+    {
+        directive: "LoginGraceTime 30",
+        default: "120",
+        desc: "Closes the connection if authentication is not completed in 30 seconds. Reduces the window for timing attacks and hung connections that consume resources.",
+        risk: "Ninguno. 30 segundos es más que suficiente para autenticarse con SSH key.",
+    },
+];
+
+const securityImpact = [
+    { before: "Root login enabled", after: "Root login disabled", icon: "lock" },
+    { before: "Password auth enabled", after: "SSH key only", icon: "key" },
+    { before: "Port 22 (mass scans)", after: "Port 2222 (off the automated radar)", icon: "shield" },
+    { before: "6 auth attempts", after: "3 attempts → fail2ban", icon: "zap" },
+    { before: "120s para autenticar", after: "30s → conexión cerrada", icon: "clock" },
+];
+---
+
+<DocsLayout
+    title="SSH Hardening - ITOps Automation Lab"
+    description="Phase 1.4 of the Rocky Linux ITOps Automation Lab: SSH service hardening — no root login, public key only, custom port and authentication limits with fail2ban."
+    activePage="ssh-hardening"
+    lang="en"
+    prev={{
+        label: "Firewalld & Network Security",
+        href: "/en/aiops-lab/phase-1/firewalld",
+    }}
+    next={{
+        label: "Rocky Linux vs Ubuntu",
+        href: "/en/aiops-lab/phase-1/rocky-vs-ubuntu",
+    }}
+>
+    <div class="docs-page">
+        <!-- ═══ Hero ═══ -->
+        <div class="f1-hero">
+            <div class="f1-hero__top">
+                <div class="f1-hero__badge">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    Phase 1.4
+                </div>
+                <span class="f1-hero__time">Rocky Linux 9 · SSH</span>
+            </div>
+
+            <h1 class="f1-hero__title">
+                SSH Hardening
+                <span class="f1-hero__accent">· No Password, Keys Only</span>
+            </h1>
+            <p class="f1-hero__subtitle">
+                The last layer of base hardening. SSH is the only service
+                that accepts incoming connections from outside the VM — it must
+                be hardened. No root login, no password authentication,
+                non-standard port and fail2ban for brute force.
+            </p>
+        </div>
+
+        <!-- ═══ Why ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">01</span>
+                <h2 class="overview-h2">Why SSH Hardening?</h2>
+            </div>
+            <p class="overview-lead">
+                SSH is the number one attack vector on Linux servers. Automated
+                scans hit port 22 around the clock looking for weak
+                username/password combinations. SSH hardening eliminates three root
+                vulnerabilities: there is no password to guess, there is no root to
+                access directly, and failed attempts are blocked by fail2ban.
+            </p>
+
+            <div class="impact-grid">
+                {securityImpact.map((item) => (
+                    <div class="impact-row">
+                        <div class="impact-row__before">
+                            <span class="impact-row__label">Before</span>
+                            {item.before}
+                        </div>
+                        <div class="impact-row__arrow">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        </div>
+                        <div class="impact-row__after">
+                            <span class="impact-row__label">After</span>
+                            {item.after}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div class="info-card">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>Application order:</strong> firewalld →
+                    SELinux → ssh-hardening. First the network and the
+                    kernel are prepared, then the service is changed. If ssh-hardening
+                    ran before firewalld, port 2222 would not be
+                    open and the SSH connection would be cut when restarting sshd.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Directivas ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">02</span>
+                <h2 class="overview-h2">The Five Directives</h2>
+            </div>
+            <p class="overview-lead">
+                Five changes in <code>/etc/ssh/sshd_config</code> that
+                transform a default SSH installation into a hardened
+                service. Each modification is validated with <code>sshd -t</code>
+                before applying — if the syntax is invalid, Ansible fails and
+                does not touch the file.
+            </p>
+
+            <div class="directives-list">
+                {sshDirectives.map((d) => (
+                    <div class="directive-card">
+                        <div class="directive-card__header">
+                            <code class="directive-card__cmd">{d.directive}</code>
+                            <span class="directive-card__default">default: {d.default}</span>
+                        </div>
+                        <p class="directive-card__desc">{d.desc}</p>
+                        <div class="directive-card__risk">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            <span>{d.risk}</span>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <!-- ═══ El Role ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">03</span>
+                <h2 class="overview-h2">The ssh-hardening Role</h2>
+            </div>
+            <p class="overview-lead">
+                The role modifies sshd_config, integrates the new port with SELinux,
+                and restarts the service only if necessary. It uses Ansible handlers
+                to avoid unnecessary restarts.
+            </p>
+
+            <h3 class="subsection-title">Defaults</h3>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">roles/ssh-hardening/defaults/main.yml</span>
+                </div>
+                <pre><code>ssh_port: 2222
+ssh_password_auth: false
+ssh_max_auth_tries: 3
+ssh_login_grace_time: "30"</code></pre>
+            </div>
+
+            <h3 class="subsection-title">Tasks</h3>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">roles/ssh-hardening/tasks/main.yml</span>
+                </div>
+                <pre><code>- name: Instalar the service SSH
+  ansible.builtin.dnf:
+      name: openssh-server
+      state: present
+
+- name: Disable root login
+  ansible.builtin.lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: "^#?PermitRootLogin"
+      line: "PermitRootLogin no"
+      validate: "sshd -t -f %s"
+
+- name: Configure password-based authentication
+  ansible.builtin.lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: "^#?PasswordAuthentication"
+      line: "PasswordAuthentication {O} 'yes' if ssh_password_auth else 'no' {C}"
+      validate: "sshd -t -f %s"
+
+- name: Configure MaxAuthTries
+  ansible.builtin.lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: "^#?MaxAuthTries"
+      line: "MaxAuthTries {O} ssh_max_auth_tries {C}"
+      validate: "sshd -t -f %s"
+
+- name: Configure LoginGraceTime
+  ansible.builtin.lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: "^#?LoginGraceTime"
+      line: "LoginGraceTime {O} ssh_login_grace_time {C}"
+      validate: "sshd -t -f %s"
+
+- name: Change SSH port (only if different from 22)
+  ansible.builtin.lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: "^#?Port "
+      line: "Port {O} ssh_port {C}"
+      validate: "sshd -t -f %s"
+  when: ssh_port != 22
+  notify: Restart sshd
+
+- name: Configure SELinux for the new SSH port
+  ansible.builtin.command:
+      cmd: semanage port -a -t ssh_port_t -p tcp {O} ssh_port {C}
+  when:
+      - ssh_port != 22
+      - selinux_ssh_port_check.rc != 0</code></pre>
+            </div>
+
+            <p class="overview-text">
+                Two important details in this role. First, the <code>validate: "sshd -t -f %s"</code>
+                in each <code>lineinfile</code> task — Ansible tests the
+                file syntax before saving it and reverts if the
+                result is invalid. Second, the SELinux task uses
+                <code>semanage port</code> to register port 2222 with the
+                <code>ssh_port_t</code> context, coordinating with the
+                <code>selinux</code> role that ran before.
+            </p>
+
+            <h3 class="subsection-title">Handler</h3>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">roles/ssh-hardening/handlers/main.yml</span>
+                </div>
+                <pre><code>- name: Restart sshd
+  ansible.builtin.systemd:
+    name: sshd
+    state: restarted</code></pre>
+            </div>
+
+            <p class="overview-text">
+                The handler only triggers if the SSH port changed (condition
+                <code>when: ssh_port != 22</code>). If the port was already 2222 from
+                a previous run, sshd is not restarted unnecessarily.
+                This avoids cutting active SSH sessions during repeated
+                playbook runs.
+            </p>
+        </div>
+
+        <!-- ═══ Conectarse Después del Hardening ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">04</span>
+                <h2 class="overview-h2">Connecting After Hardening</h2>
+            </div>
+            <p class="overview-lead">
+                Once the hardening is applied, the only way to access the
+                VM is with an SSH key on port 2222. There is no alternative —
+                password auth is disabled and root cannot log in.
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">post-hardening connection</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-comment"># No longer works — password auth disabled</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> ssh user@vm-ip</span></div>
+                    <div class="t-line"><span class="t-out t-err">usuario@vm-ip: Permission denied (publickey).</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Also does not work — root login disabled</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> ssh root@vm-ip -p 2222</span></div>
+                    <div class="t-line"><span class="t-out t-err">root@vm-ip: Permission denied (publickey).</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Only correct way — user + key + custom port</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> ssh -i ~/.ssh/id_ed25519 -p 2222 user@vm-ip</span></div>
+                    <div class="t-line"><span class="t-out">Last login: Sat May 31 09:00:00 2026 from 192.168.64.1</span></div>
+                    <div class="t-line"><span class="t-out">[user@rocky-aiops ~]$</span></div>
+                </div>
+            </div>
+
+            <p class="overview-text">
+                To simplify, add this to your local machine's <code>~/.ssh/config</code>:
+            </p>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">~/.ssh/config</span>
+                </div>
+                <pre><code>Host rocky-lab
+    HostName 192.168.64.10
+    Port 2222
+    User agustinm
+    IdentityFile ~/.ssh/id_ed25519</code></pre>
+            </div>
+
+            <p class="overview-text">
+                Con esta configuración, conectarse es simplemente
+                With this configuration, connecting is simply
+            </p>
+
+            <div class="info-card info-card--warn">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>Precaución con el orden de deploy.</strong> Antes de
+                    ejecutarCaution with deploy order.</strong> Before
+                    running this role via remote SSH, the public key must
+                    be copied to the VM's <code>~/.ssh/authorized_keys</code>.
+                    If the playbook is executed from outside the VM and the key
+                    is not configured, the SSH connection is lost when the
+                    playbook finishes — with no way to recover it remotely
+            </div>
+        </div>
+
+        <!-- ═══ Verificación ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">05</span>
+                <h2 class="overview-h2">Verify It Worked</h2>
+            </div>
+            <p class="overview-lead">
+                After running the playbook, these commands confirm that
+                each hardening directive is applied correctly.
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">verify-ssh.sh</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-comment"># Root login must be disabled</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> grep "^PermitRootLogin" /etc/ssh/sshd_config</span></div>
+                    <div class="t-line"><span class="t-out">PermitRootLogin <span class="t-ok">no</span></span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Password auth must be disabled</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> grep "^PasswordAuthentication" /etc/ssh/sshd_config</span></div>
+                    <div class="t-line"><span class="t-out">PasswordAuthentication <span class="t-ok">no</span></span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Port must be 2222, not 22</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> grep "^Port" /etc/ssh/sshd_config</span></div>
+                    <div class="t-line"><span class="t-out">Port <span class="t-ok">2222</span></span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># MaxAuthTries 3</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> grep "^MaxAuthTries" /etc/ssh/sshd_config</span></div>
+                    <div class="t-line"><span class="t-out">MaxAuthTries <span class="t-ok">3</span></span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># LoginGraceTime 30</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> grep "^LoginGraceTime" /etc/ssh/sshd_config</span></div>
+                    <div class="t-line"><span class="t-out">LoginGraceTime <span class="t-ok">30</span></span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># sshd must be listening on 2222, not 22</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> ss -tlnp | grep sshd</span></div>
+                    <div class="t-line"><span class="t-out">LISTEN 0  128  *:<span class="t-ok">2222</span>  *:*  users:(("sshd",pid=891,fd=3))</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># SELinux must have port 2222 registered as ssh_port_t</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> semanage port -l | grep ssh_port_t</span></div>
+                    <div class="t-line"><span class="t-out">ssh_port_t  tcp  <span class="t-ok">2222</span></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ SSH + fail2ban ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">06</span>
+                <h2 class="overview-h2">SSH + fail2ban</h2>
+            </div>
+            <p class="overview-lead">
+                SSH hardening and fail2ban work together. SSH limits to
+                3 attempts per connection. fail2ban bans the IP for 1 hour
+                after 5 failed attempts in 10 minutes. The result: an
+                automated attacker is blocked almost instantly.
+            </p>
+
+            <div class="f2b-flow">
+                <div class="f2b-step">
+                    <div class="f2b-step__num">1</div>
+                    <div class="f2b-step__text">
+                        Attacker tries SSH on port 2222
+                    </div>
+                </div>
+                <div class="f2b-arrow">→</div>
+                <div class="f2b-step">
+                    <div class="f2b-step__num">2</div>
+                    <div class="f2b-step__text">
+                        Fails 3 times → SSH closes the connection
+                    </div>
+                </div>
+                <div class="f2b-arrow">→</div>
+                <div class="f2b-step">
+                    <div class="f2b-step__num">3</div>
+                    <div class="f2b-step__text">
+                        Tries again, 2 more failures = 5 total
+                    </div>
+                </div>
+                <div class="f2b-arrow">→</div>
+                <div class="f2b-step f2b-step--block">
+                    <div class="f2b-step__num">4</div>
+                    <div class="f2b-step__text">
+                        fail2ban banea la IP por 1 hora
+                    </div>
+                </div>
+            </div>
+
+            <p class="overview-text">
+                fail2ban configuration is covered in detail in Phase 8
+                (Security for Production). For Phase 1, the fail2ban role
+                is already included in <code>site.yml</code> and works with the
+                default values.
+            </p>
+        </div>
+
+        <!-- ═══ CTA ═══ -->
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card">
+                <div class="cta-card__content">
+                    <h3 class="cta-card__title">Next: Rocky Linux vs Ubuntu</h3>
+                    <p class="cta-card__desc">
+                        With hardening fully applied, the last page of
+                        Phase 1 compares the security decisions between
+                        Rocky Linux (RHEL) and Ubuntu — the why behind each
+                        choice and how it positions the project.
+                    </p>
+                </div>
+                <a href="/en/aiops-lab/phase-1/rocky-vs-ubuntu" class="cta-card__btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>
+                    Rocky Linux vs Ubuntu
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page {
+        max-width: 740px;
+    }
+
+    /* ── Hero ── */
+    .f1-hero {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.75rem;
+        margin-bottom: 3rem;
+    }
+
+    .f1-hero__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+
+    .f1-hero__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+
+    .f1-hero__time {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.4rem;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .f1-hero__title {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 700;
+        color: var(--green-50);
+        line-height: 1.15;
+        margin-bottom: 0.5rem;
+    }
+
+    .f1-hero__accent {
+        color: var(--green-500);
+        font-weight: 500;
+    }
+
+    .f1-hero__subtitle {
+        font-size: var(--text-md);
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 560px;
+    }
+
+    /* ── Sections ── */
+    .overview-section {
+        margin-bottom: 3rem;
+    }
+
+    .overview-section--cta {
+        margin-top: 1rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .section-num {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-600);
+        font-weight: 500;
+    }
+
+    .overview-h2 {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0;
+    }
+
+    .overview-lead {
+        font-size: var(--text-base);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1.5rem;
+        max-width: 560px;
+    }
+
+    .overview-text {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1rem;
+    }
+
+    .overview-text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    .subsection-title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 1.5rem 0 0.75rem;
+    }
+
+    /* ── Info Cards ── */
+    .info-card {
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.875rem 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .info-card--warn {
+        border-color: rgba(234, 179, 8, 0.25);
+        background: rgba(234, 179, 8, 0.04);
+    }
+
+    .info-card--warn .info-card__icon {
+        color: #eab308;
+    }
+
+    .info-card__icon {
+        flex-shrink: 0;
+        color: var(--green-400);
+        margin-top: 0.1rem;
+    }
+
+    .info-card__icon svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+    }
+
+    .info-card__text strong {
+        color: var(--green-50);
+        font-weight: 600;
+    }
+
+    .info-card__text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    /* ── Impact Grid ── */
+    .impact-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        margin-bottom: 1rem;
+    }
+
+    .impact-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0.85rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        font-size: var(--text-sm);
+    }
+
+    .impact-row__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-3xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        display: block;
+        margin-bottom: 0.1rem;
+    }
+
+    .impact-row__before {
+        flex: 1;
+        color: var(--text-dim);
+    }
+
+    .impact-row__arrow {
+        color: var(--green-500);
+        flex-shrink: 0;
+    }
+
+    .impact-row__arrow svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+    }
+
+    .impact-row__after {
+        flex: 1;
+        color: var(--green-50);
+        font-weight: 500;
+    }
+
+    /* ── Directives List ── */
+    .directives-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .directive-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.85rem 1rem;
+        transition: background 0.2s;
+    }
+
+    .directive-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .directive-card__header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .directive-card__cmd {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+
+    .directive-card__default {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+    }
+
+    .directive-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0 0 0.4rem;
+    }
+
+    .directive-card__risk {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.3rem;
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        line-height: 1.4;
+    }
+
+    .directive-card__risk svg {
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+        margin-top: 0.15rem;
+        color: #eab308;
+    }
+
+    /* ── Code Block ── */
+    .code-block {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .code-block__header {
+        display: flex;
+        align-items: center;
+        padding: 0.45rem 0.85rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .code-block__file {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+    }
+
+    .code-block pre {
+        margin: 0;
+        padding: 0.85rem;
+        overflow-x: auto;
+    }
+
+    .code-block code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-muted);
+        line-height: 1.55;
+    }
+
+    /* ── Terminal ── */
+    .terminal-block {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        margin-bottom: 1.5rem;
+    }
+
+    .terminal-block__bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .terminal-block__dots {
+        display: flex;
+        gap: 0.3rem;
+    }
+
+    .terminal-block__dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+        display: block;
+    }
+
+    .terminal-block__title {
+        color: var(--text-dim);
+        font-size: var(--text-2xs);
+        margin-left: auto;
+        margin-right: auto;
+        padding-right: 2.5rem;
+    }
+
+    .terminal-block__body {
+        padding: 0.65rem 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    .t-line {
+        line-height: 1.5;
+    }
+
+    .t-line--spacer {
+        height: 0.35rem;
+    }
+
+    .t-prompt {
+        color: var(--green-600);
+        margin-right: 0.3rem;
+    }
+
+    .t-cmd {
+        color: var(--green-300);
+    }
+
+    .t-out {
+        color: var(--text-dim);
+        padding-left: 1.1rem;
+    }
+
+    .t-err {
+        color: #ef4444;
+    }
+
+    .t-ok {
+        color: var(--green-400);
+    }
+
+    .t-comment {
+        color: rgba(255, 255, 255, 0.25);
+        font-style: italic;
+        padding-left: 0;
+    }
+
+    /* ── fail2ban flow ── */
+    .f2b-flow {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        margin-bottom: 1rem;
+        overflow-x: auto;
+    }
+
+    .f2b-step {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        flex-shrink: 0;
+    }
+
+    .f2b-step__num {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        font-weight: 600;
+        color: var(--green-300);
+        flex-shrink: 0;
+    }
+
+    .f2b-step__text {
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        white-space: nowrap;
+    }
+
+    .f2b-step--block .f2b-step__num {
+        border-color: #ef4444;
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.08);
+    }
+
+    .f2b-step--block .f2b-step__text {
+        color: #ef4444;
+        font-weight: 500;
+    }
+
+    .f2b-arrow {
+        color: var(--text-dim);
+        font-size: var(--text-sm);
+        flex-shrink: 0;
+    }
+
+    /* ── CTA ── */
+    .cta-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+    }
+
+    .cta-card__content {
+        flex: 1;
+    }
+
+    .cta-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0 0 0.25rem;
+    }
+
+    .cta-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0;
+    }
+
+    .cta-card__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--green-50);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.6rem 1rem;
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.2s, border-color 0.2s;
+    }
+
+    .cta-card__btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--border-hover);
+    }
+
+    .cta-card__btn svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+        .f2b-flow {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.3rem;
+        }
+
+        .f2b-arrow {
+            display: none;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .cta-card {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>

@@ -1,0 +1,837 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+
+const techLogoMap: Record<string, string> = {
+    "Rocky Linux": "rockylinux.svg",
+    K3s: "k3s.svg",
+    Ansible: "ansible.svg",
+    OpenTofu: "opentofu.svg",
+    ArgoCD: "argocd.svg",
+    Jenkins: "jenkins.svg",
+    N8N: "n8n.svg",
+    Grafana: "grafana.svg",
+    Prometheus: "prometheus.svg",
+    Loki: "loki.png",
+    "HashiCorp Vault": "vault.svg",
+};
+
+const features = [
+    {
+        title: "Incident Auto-Response",
+        desc: "Prometheus → Alertmanager → n8n → LLM → Discord. Full loop automated.",
+        svgPath:
+            '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+    },
+    {
+        title: "Full Observability",
+        desc: "Prometheus + Loki + Grafana Alloy + Grafana dashboards on k3s.",
+        svgPath: '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>',
+    },
+    {
+        title: "GitOps with ArgoCD",
+        desc: "Manifests from GitHub auto-deployed to the cluster with sync policies.",
+        svgPath:
+            '<path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/>',
+    },
+    {
+        title: "Self-Hosted CI/CD",
+        desc: "Jenkins + GitHub Actions — pipelines, lint, multi-stage builds.",
+        svgPath: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    },
+    {
+        title: "Oracle Cloud Ready",
+        desc: "Free Tier: 4 vCPUs ARM, 24 GB RAM, OCI Vault, Object Storage.",
+        svgPath:
+            '<path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>',
+    },
+    {
+        title: "SRE Practices",
+        desc: "SLO/SLI, fail2ban, dnf-automatic, SELinux enforcing, firewalld.",
+        svgPath:
+            '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>',
+    },
+];
+
+const architectureTiers = [
+    {
+        label: "Response",
+        nodes: [
+            { name: "n8n", logo: "n8n.svg" },
+            { name: "LLM", logo: "openai.svg", accent: true },
+            { name: "Discord", logo: "discord.svg" },
+        ],
+    },
+    {
+        label: "Observe",
+        nodes: [
+            { name: "Prometheus", logo: "prometheus.svg" },
+            { name: "Alertm.", logo: "prometheus.svg" },
+            { name: "Loki", logo: "loki.png" },
+            { name: "Grafana", logo: "grafana.svg", accent: true },
+        ],
+    },
+    {
+        label: "Deploy",
+        nodes: [
+            { name: "ArgoCD", logo: "argocd.svg" },
+            { name: "Jenkins", logo: "jenkins.svg" },
+            { name: "Vault", logo: "vault.svg" },
+        ],
+    },
+    {
+        label: "Infra",
+        nodes: [
+            { name: "k3s", logo: "k3s.svg" },
+            { name: "Ansible", logo: "ansible.svg" },
+            { name: "OpenTofu", logo: "opentofu.svg" },
+            { name: "OCI", logo: "oci.svg", accent: true },
+        ],
+    },
+];
+---
+
+<DocsLayout
+    title="Overview - ITOps Automation Lab"
+    description="Overview of the Rocky Linux ITOps Automation Lab — self-hosted ITOps automation platform with k3s, n8n, ArgoCD and Oracle Cloud."
+    activePage="overview"
+    lang="en"
+    lang="en"
+    next={{
+        label: "Prerequisites",
+        href: "/en/aiops-lab/getting-started/prerequisites",
+    }}
+>
+    <div class="docs-page">
+        <!-- ═══ Hero ═══ -->
+        <div class="overview-hero">
+            <div class="overview-hero__top">
+                <div class="overview-hero__badge">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="12"
+                        height="12"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><polygon
+                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                        ></polygon></svg
+                    >
+                    Active Lab
+                </div>
+                <a
+                    href="https://github.com/agusm2002/rocky-linux-aiops-lab"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="overview-hero__gh"
+                    aria-label="Ver en GitHub"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        ><path
+                            d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+                        ></path></svg
+                    >
+                    <span>GitHub</span>
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        ><path d="M7 17L17 7M17 7H7M17 7v10"></path></svg
+                    >
+                </a>
+            </div>
+
+            <div class="overview-hero__brand">
+                <div class="overview-hero__logo">
+                    <img
+                        src="/tech-icons/rockylinux.svg"
+                        alt=""
+                        width="28"
+                        height="28"
+                    />
+                </div>
+                <div>
+                    <h1 class="overview-hero__title">
+                        ITOps Automation Lab
+                        <span class="overview-hero__accent">· AI-Powered</span>
+                    </h1>
+                    <p class="overview-hero__subtitle">
+                        Self-hosted ITOps automation platform on Rocky Linux —
+                        from local k3s lab to Oracle Cloud Free Tier.
+                    </p>
+                </div>
+            </div>
+
+            <div class="overview-hero__terminal">
+                <div class="t-bar">
+                    <div class="t-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                    <span class="t-title">status.sh</span>
+                </div>
+                <div class="t-body">
+                    <div class="t-line">
+                        <span class="t-prompt">$</span>
+                        <span class="t-cmd">uname -o</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-out">GNU/Linux (Rocky Linux 9.4)</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-prompt">$</span>
+                        <span class="t-cmd">kubectl get nodes</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-out"
+                            >k3s-master Ready control-plane,master</span
+                        >
+                    </div>
+                    <div class="t-line">
+                        <span class="t-prompt">$</span>
+                        <span class="t-cmd">vault status</span>
+                    </div>
+                    <div class="t-line">
+                        <span class="t-out"
+                            ><span class="t-ok">Sealed:</span> false | <span
+                                class="t-ok">Version:</span
+                            > 1.17</span
+                        >
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Architecture ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">01</span>
+                <h2 class="overview-h2">Architecture</h2>
+            </div>
+            <p class="overview-lead">
+                Four-tier stack: Response → Observe → Deploy → Infra. Everything
+                wired together with GitOps and event-driven automation.
+            </p>
+
+            <div class="arch-diagram" aria-hidden="true">
+                {
+                    architectureTiers.map((tier, i) => (
+                        <>
+                            <div class="arch-tier">
+                                <div class="arch-tier__label">{tier.label}</div>
+                                <div class="arch-tier__nodes">
+                                    {tier.nodes.map((node) => (
+                                        <span
+                                            class={`arch-tier__node ${node.accent ? "arch-tier__node--accent" : ""}`}
+                                        >
+                                            <img
+                                                src={`/tech-icons/${node.logo}`}
+                                                alt=""
+                                                class="tech-logo"
+                                                width="16"
+                                                height="16"
+                                            />
+                                            <span class="arch-tier__name">
+                                                {node.name}
+                                            </span>
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                            {i < architectureTiers.length - 1 && (
+                                <div class="arch-tier__connector" />
+                            )}
+                        </>
+                    ))
+                }
+            </div>
+        </div>
+
+        <!-- ═══ Features ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">02</span>
+                <h2 class="overview-h2">Key Features</h2>
+            </div>
+
+            <div class="features-grid">
+                {
+                    features.map((f, i) => (
+                        <div class="feature-card">
+                            <div class="feature-card__icon">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                >
+                                    <Fragment set:html={f.svgPath} />
+                                </svg>
+                            </div>
+                            <h3 class="feature-card__title">{f.title}</h3>
+                            <p class="feature-card__desc">{f.desc}</p>
+                        </div>
+                    ))
+                }
+            </div>
+        </div>
+
+        <!-- ═══ Stack ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">03</span>
+                <h2 class="overview-h2">Tech Stack</h2>
+            </div>
+
+            <div class="stack-grid">
+                {
+                    Object.entries(techLogoMap).map(([name, logo]) => (
+                        <div class="stack-item">
+                            <img
+                                src={`/tech-icons/${logo}`}
+                                alt=""
+                                class="stack-item__logo"
+                                width="24"
+                                height="24"
+                            />
+                            <span class="stack-item__name">{name}</span>
+                        </div>
+                    ))
+                }
+            </div>
+        </div>
+
+        <!-- ═══ CTA ═══ -->
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card">
+                <div class="cta-card__content">
+                    <h3 class="cta-card__title">Explore the repository</h3>
+                    <p class="cta-card__desc">
+                        Full source code, Ansible playbooks, OpenTofu modules,
+                        Kubernetes manifests, and documentation.
+                    </p>
+                </div>
+                <a
+                    href="https://github.com/agusm2002/rocky-linux-aiops-lab"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="cta-card__btn"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        ><path
+                            d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+                        ></path></svg
+                    >
+                    Open GitHub
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page {
+        max-width: 740px;
+    }
+
+    /* ── Hero ── */
+    .overview-hero {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.75rem;
+        margin-bottom: 3rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .overview-hero__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+
+    .overview-hero__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+
+    .overview-hero__badge svg {
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+    }
+
+    .overview-hero__gh {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.4rem;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+        transition:
+            color 0.2s,
+            border-color 0.2s,
+            background 0.2s;
+    }
+    .overview-hero__gh:hover {
+        color: var(--green-50);
+        border-color: var(--border-hover);
+        background: rgba(255, 255, 255, 0.05);
+    }
+    .overview-hero__gh svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+    }
+    .overview-hero__gh svg:last-child {
+        width: 11px;
+        height: 11px;
+    }
+
+    .overview-hero__brand {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.875rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .overview-hero__logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        flex-shrink: 0;
+    }
+    .overview-hero__logo img {
+        filter: brightness(0) invert(1);
+        opacity: 0.92;
+        width: 28px;
+        height: 28px;
+    }
+
+    .overview-hero__title {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 700;
+        color: var(--green-50);
+        line-height: 1.15;
+        margin-bottom: 0.4rem;
+    }
+    .overview-hero__accent {
+        color: var(--green-500);
+        font-weight: 500;
+    }
+
+    .overview-hero__subtitle {
+        font-size: var(--text-md);
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 520px;
+    }
+
+    /* ── Terminal ── */
+    .overview-hero__terminal {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+    }
+
+    .t-bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+    .t-dots {
+        display: flex;
+        gap: 0.3rem;
+    }
+    .t-dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+        display: block;
+    }
+    .t-title {
+        color: var(--text-dim);
+        font-size: var(--text-2xs);
+        margin-left: auto;
+        margin-right: auto;
+        padding-right: 2.5rem;
+    }
+
+    .t-body {
+        padding: 0.65rem 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+    .t-line {
+        line-height: 1.5;
+    }
+    .t-prompt {
+        color: var(--green-600);
+        margin-right: 0.3rem;
+    }
+    .t-cmd {
+        color: var(--green-300);
+    }
+    .t-out {
+        color: var(--text-dim);
+        padding-left: 1.1rem;
+    }
+    .t-ok {
+        color: var(--green-400);
+    }
+
+    /* ── Sections ── */
+    .overview-section {
+        margin-bottom: 3rem;
+    }
+    .overview-section--cta {
+        margin-top: 1rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
+    .section-num {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-600);
+        font-weight: 500;
+    }
+    .overview-h2 {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0;
+    }
+    .overview-lead {
+        font-size: var(--text-base);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1.5rem;
+        max-width: 560px;
+    }
+
+    /* ── Architecture ── */
+    .arch-diagram {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0;
+        padding: 1.25rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+    }
+
+    .arch-tier {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.6rem;
+        width: 100%;
+    }
+    .arch-tier__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }
+    .arch-tier__nodes {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.4rem;
+    }
+    .arch-tier__node {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.35rem 0.6rem;
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid var(--border);
+        border-radius: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-muted);
+        transition:
+            background 0.2s,
+            border-color 0.2s;
+    }
+    .arch-tier__node:hover {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--border-hover);
+    }
+    .arch-tier__node--accent {
+        border-color: rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.055);
+    }
+    .arch-tier__node--accent .arch-tier__name {
+        color: var(--green-300);
+    }
+    .arch-tier__name {
+        line-height: 1;
+    }
+
+    .tech-logo {
+        width: 16px;
+        height: 16px;
+        object-fit: contain;
+        filter: brightness(0) invert(1);
+        opacity: 0.8;
+        flex-shrink: 0;
+        display: block;
+    }
+    .arch-tier__node--accent .tech-logo {
+        opacity: 0.95;
+    }
+
+    .arch-tier__connector {
+        position: relative;
+        width: 1px;
+        height: 1.25rem;
+        background: var(--border);
+        margin: 0.2rem 0;
+    }
+    .arch-tier__connector::before,
+    .arch-tier__connector::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 6px;
+        height: 1px;
+        background: var(--border);
+    }
+    .arch-tier__connector::before {
+        top: 0;
+    }
+    .arch-tier__connector::after {
+        bottom: 0;
+    }
+
+    /* ── Features grid ── */
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+    }
+
+    .feature-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        transition: background 0.2s;
+    }
+    .feature-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .feature-card__icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.25rem;
+        height: 2.25rem;
+        border-radius: 0.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        color: var(--green-400);
+        margin-bottom: 0.75rem;
+    }
+    .feature-card__icon svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        display: block;
+    }
+    .feature-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-bottom: 0.35rem;
+        margin-top: 0;
+    }
+    .feature-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0;
+    }
+
+    /* ── Stack grid ── */
+    .stack-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+    }
+
+    .stack-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.875rem 0.5rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        transition: background 0.2s;
+    }
+    .stack-item:hover {
+        background: rgba(255, 255, 255, 0.035);
+    }
+
+    .stack-item__logo {
+        width: 24px;
+        height: 24px;
+        object-fit: contain;
+        filter: brightness(0) invert(1);
+        opacity: 0.85;
+        display: block;
+    }
+    .stack-item__name {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-muted);
+        text-align: center;
+        line-height: 1.2;
+    }
+
+    /* ── CTA ── */
+    .cta-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: 1.5rem 1.75rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        flex-wrap: wrap;
+    }
+
+    .cta-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-lg);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-bottom: 0.25rem;
+        margin-top: 0;
+    }
+    .cta-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        max-width: 380px;
+        margin: 0;
+    }
+
+    .cta-card__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--green-50);
+        padding: 0.6rem 1.1rem;
+        border-radius: 0.5rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border);
+        transition:
+            background 0.2s,
+            border-color 0.2s;
+        flex-shrink: 0;
+        text-decoration: none;
+    }
+    .cta-card__btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--border-hover);
+    }
+    .cta-card__btn svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+        .features-grid {
+            grid-template-columns: 1fr;
+        }
+        .stack-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        .cta-card {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        .overview-hero__brand {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+    @media (max-width: 420px) {
+        .stack-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+</style>

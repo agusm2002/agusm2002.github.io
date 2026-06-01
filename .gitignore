@@ -22,3 +22,7 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# AIOps Lab — contexto local para IA, no se publica en el portfolio
+docs/rocky-linux-aiops-lab/
+docs/rocky-linux-aiops-lab-plan-v3.md

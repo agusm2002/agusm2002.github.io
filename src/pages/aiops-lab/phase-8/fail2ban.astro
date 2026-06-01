@@ -1,0 +1,103 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+const jailConfig = ["[sshd]", "enabled = true", "port = 2222", "maxretry = 5", "bantime = 3600", "findtime = 600"].join("\n");
+---
+
+<DocsLayout
+    title="Fail2Ban - ITOps Automation Lab"
+    description="Fase 8 del Rocky Linux ITOps Automation Lab: Fail2Ban para proteccion contra fuerza bruta en SSH — baneo automatico tras 5 intentos fallidos."
+    activePage="fail2ban"
+    prev={{ label: "Drift Detection Demo", href: "/aiops-lab/phase-7/drift-detection" }}
+    next={{ label: "Hardening Checklist", href: "/aiops-lab/phase-8/hardening-checklist" }}
+>
+    <div class="docs-page">
+        <div class="f8-hero"><div class="f8-hero__top"><div class="f8-hero__badge">Fase 8</div><span class="f8-hero__time">Fail2Ban</span></div><h1 class="f8-hero__title">Fail2Ban<span class="f8-hero__accent"> · Proteccion SSH</span></h1><p class="f8-hero__subtitle">Fail2Ban monitorea los logs de SSH y banea automaticamente IPs que exceden 5 intentos fallidos en 10 minutos. Combinado con el hardening de SSH (sin password auth), la superficie de ataque se reduce a practicamente cero.</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">Configuracion de la Jail SSH</h2></div>
+            <p class="overview-lead">Una sola jail protege el puerto SSH custom. Los parametros son conservadores para un lab — en produccion se ajustarian segun el perfil de amenaza.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">/etc/fail2ban/jail.local</span></div><pre><code>{jailConfig}</code></pre></div>
+            <div class="specs-row">
+                <div class="spec-mini"><div class="spec-mini__val">5</div><div class="spec-mini__label">Max Retries</div></div>
+                <div class="spec-mini"><div class="spec-mini__val">1 hora</div><div class="spec-mini__label">Ban Time</div></div>
+                <div class="spec-mini"><div class="spec-mini__val">10 min</div><div class="spec-mini__label">Find Time</div></div>
+                <div class="spec-mini"><div class="spec-mini__val">2222</div><div class="spec-mini__label">Puerto</div></div>
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">SSH + Fail2Ban: Defensa en Capas</h2></div>
+            <p class="overview-lead">Fail2Ban no trabaja solo. Es la ultima capa de un sistema de defensa que empieza en el firewall y termina en el baneo automatico.</p>
+            <div class="layers">
+                <div class="layer"><div class="layer__num">1</div><div class="layer__text"><strong>Firewalld:</strong> solo el puerto 2222 esta abierto. El 22 ni siquiera acepta conexiones.</div></div>
+                <div class="layer"><div class="layer__num">2</div><div class="layer__text"><strong>SSH Hardening:</strong> sin password auth. Sin root login. MaxAuthTries = 3.</div></div>
+                <div class="layer"><div class="layer__num">3</div><div class="layer__text"><strong>Fail2Ban:</strong> 5 intentos fallidos en 10 minutos = IP baneada por 1 hora.</div></div>
+            </div>
+            <div class="info-card"><div class="info-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="info-card__text"><strong>Sin password auth, fail2ban casi no tiene trabajo.</strong> Si un atacante no puede autenticarse con contraseña, no genera intentos fallidos que fail2ban pueda contar. La combinacion de ambas medidas hace que el puerto 2222 sea invisible para escaneos automaticos y frustrante para ataques dirigidos.</div></div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">Verificacion</h2></div>
+            <div class="terminal-block"><div class="terminal-block__bar"><div class="terminal-block__dots"><span></span><span></span><span></span></div><span class="terminal-block__title">fail2ban-client</span></div><div class="terminal-block__body">
+                <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">fail2ban-client status sshd</span></div>
+                <div class="t-line"><span class="t-out">Status for the jail 'sshd'</span></div>
+                <div class="t-line"><span class="t-out">  |- Filter: Currently 0 banned</span></div>
+                <div class="t-line t-line--spacer"></div>
+                <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">fail2ban-client status</span></div>
+                <div class="t-line"><span class="t-out">Status: 1 jail active</span></div>
+            </div></div>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Siguiente: Hardening Checklist</h3><p class="cta-card__desc">El checklist completo de hardening aplicado en el proyecto — una referencia rapida de todas las capas de seguridad.</p></div><a href="/aiops-lab/phase-8/hardening-checklist" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Checklist</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f8-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f8-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f8-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f8-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f8-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f8-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f8-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .code-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .code-block__header { display: flex; align-items: center; padding: 0.45rem 0.85rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .code-block__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .code-block pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .code-block code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+    .specs-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 0.5rem; margin-bottom: 1rem; }
+    .spec-mini { text-align: center; padding: 0.65rem 0.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; }
+    .spec-mini__val { font-family: var(--font-display); font-size: var(--text-lg); font-weight: 700; color: var(--green-400); margin-bottom: 0.1rem; }
+    .spec-mini__label { font-family: var(--font-mono); font-size: var(--text-3xs); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+    .layers { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
+    .layer { display: flex; gap: 0.6rem; padding: 0.55rem 0.8rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; font-size: var(--text-sm); }
+    .layer__num { display: flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--green-400); flex-shrink: 0; }
+    .layer__text { color: var(--text-muted); line-height: 1.5; }
+    .layer__text strong { color: var(--green-50); }
+    .info-card { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .terminal-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; font-family: var(--font-mono); font-size: var(--text-xs); margin-bottom: 1.5rem; }
+    .terminal-block__bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .terminal-block__dots { display: flex; gap: 0.3rem; }
+    .terminal-block__dots span { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); display: block; }
+    .terminal-block__title { color: var(--text-dim); font-size: var(--text-2xs); margin-left: auto; margin-right: auto; padding-right: 2.5rem; }
+    .terminal-block__body { padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 0.1rem; }
+    .t-line { line-height: 1.5; } .t-prompt { color: var(--green-600); margin-right: 0.3rem; }
+    .t-cmd { color: var(--green-300); } .t-out { color: var(--text-dim); padding-left: 0; } .t-line--spacer { height: 0.35rem; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    @media (max-width: 600px) { .specs-row { grid-template-columns: repeat(2,1fr); } .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>
