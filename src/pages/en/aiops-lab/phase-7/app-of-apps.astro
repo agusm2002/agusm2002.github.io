@@ -1,0 +1,73 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+const appOfAppsDesc = "El patron App of Apps delega la gestion de sub-aplicaciones a una Application raiz. En lugar de aplicar cada Application manualmente, la Application raiz apunta a un directorio Git que contiene las definiciones de las sub-aplicaciones. ArgoCD las crea y sincroniza recursivamente. Este proyecto NO usa App of Apps por simplicidad — una sola Application gestiona todo k3s/manifests/. Pero el patron se explica porque es pregunta frecuente en entrevistas.";
+---
+
+<DocsLayout
+    title="App of Apps Pattern - ITOps Automation Lab"
+    description="Phase 7 del Rocky Linux ITOps Automation Lab: patron App of Apps de ArgoCD — gestion recursiva de aplicaciones desde Git."
+    activePage="app-of-apps"
+    lang="en"
+    prev={{ label: "ArgoCD Overview", href: "/en/aiops-lab/phase-7/argocd-overview" }}
+    next={{ label: "Drift Detection Demo", href: "/en/aiops-lab/phase-7/drift-detection" }}
+>
+    <div class="docs-page">
+        <div class="f7-hero"><div class="f7-hero__top"><div class="f7-hero__badge">Phase 7.1</div><span class="f7-hero__time">App of Apps</span></div><h1 class="f7-hero__title">App of Apps<span class="f7-hero__accent"> · Patron Avanzado</span></h1><p class="f7-hero__subtitle">{appOfAppsDesc}</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">El Concepto</h2></div>
+            <p class="overview-lead">En lugar de crear N Applications manualmente, se crea una Application raiz que contiene las N definiciones como archivos YAML. ArgoCD aplica la raiz, detecta las sub-aplicaciones y las gestiona recursivamente.</p>
+            <div class="flow-viz">
+                <div class="fv-box fv-box--git">Git Repo</div><div class="fv-arr">→</div>
+                <div class="fv-box fv-box--root">Root App</div><div class="fv-arr">→</div>
+                <div class="fv-box fv-box--sub">Sub App 1</div><div class="fv-arr">→</div>
+                <div class="fv-box fv-box--sub">Sub App 2</div>
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">Por Que Este Proyecto NO lo Usa</h2></div>
+            <p class="overview-lead">App of Apps es innecesario para un solo cluster con una Application. Agrega complejidad sin beneficio cuando hay un solo equipo gestionando una sola aplicacion. Es un patron para multi-tenant o multi-environment.</p>
+            <div class="info-card"><div class="info-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="info-card__text"><strong>Argumento de entrevista:</strong> "El proyecto usa una sola Application porque el scope es un cluster single-tenant. Si tuviera que gestionar staging + prod desde el mismo repo, usaria App of Apps. Conozco el patron y se cuando aplicarlo — y cuando no."</div></div>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Siguiente: Drift Detection</h3><p class="cta-card__desc">La demo que demuestra GitOps en accion: borrar un deployment y ver a ArgoCD recrearlo automaticamente.</p></div><a href="/en/aiops-lab/phase-7/drift-detection" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Drift Detection</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f7-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f7-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f7-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f7-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f7-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f7-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f7-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .flow-viz { display: flex; align-items: center; gap: 0.4rem; padding: 1.25rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; margin-bottom: 1rem; overflow-x: auto; }
+    .fv-box { padding: 0.5rem 0.8rem; border-radius: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 600; flex-shrink: 0; }
+    .fv-box--git { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--text-dim); }
+    .fv-box--root { background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2); color: var(--green-300); }
+    .fv-box--sub { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.2); color: #3b82f6; }
+    .fv-arr { color: var(--green-500); flex-shrink: 0; }
+    .info-card { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+    .info-card--tip { border-color: rgba(34,197,94,0.2); background: rgba(34,197,94,0.03); }
+    .info-card--tip .info-card__icon { color: var(--green-400); }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 600px) { .flow-viz { flex-direction: column; } .fv-arr { display: none; } .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

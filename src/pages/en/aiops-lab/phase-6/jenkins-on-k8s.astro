@@ -1,0 +1,161 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+const jenkinsComponents = [
+    { name: "Deployment", desc: "Una replica del oficial jenkins/jenkins:lts. Corre como UID 1000 (jenkins). Expone puertos 8080 (UI) y 50000 (agentes JNLP). PVC de 10Gi para jobs, plugins y configuracion.", file: "deployment.yml" },
+    { name: "Service", desc: "ClusterIP que expone la UI en el puerto 8080 y el puerto JNLP en el 50000. El puerto 50000 permite que los agentes dinamicos se conecten al master.", file: "service.yml" },
+    { name: "PVC", desc: "10Gi de almacenamiento persistente para /var/jenkins_home. Contiene jobs, plugins, configuracion y credentials. Sin esto, todo se pierde al reiniciar el pod.", file: "pvc.yml" },
+    { name: "ServiceAccount + RBAC", desc: "ServiceAccount jenkins con ClusterRole que permite crear, listar y eliminar pods en el namespace aiops. Necesario para que el plugin de Kubernetes pueda lanzar agentes dinamicos.", file: "rbac.yml, serviceaccount.yml" },
+    { name: "ConfigMap", desc: "Script Groovy que configura el security realm de Jenkins en el primer arranque. Crea el usuario admin y deshabilita el wizard de setup inicial.", file: "configmap.yml" },
+];
+
+const jenkinsJavaOpts = [
+    { opt: "-Djenkins.install.runSetupWizard=false", desc: "Deshabilita el wizard de primer arranque. Jenkins arranca sin security realm y el script Groovy del ConfigMap lo configura." },
+    { opt: "-Djava.util.logging.config.file=/var/jenkins_home/logging.properties", desc: "Configuracion de logging. Permite ajustar el nivel de log sin reiniciar con plugins." },
+];
+
+const keyPlugins = [
+    { plugin: "Kubernetes", desc: "Permite lanzar agentes como pods efimeros en el cluster. Cada build crea un pod, lo ejecuta y lo destruye al terminar." },
+    { plugin: "Git", desc: "Clona repositorios Git. Necesario para que los pipelines lean el codigo fuente del repo del proyecto." },
+    { plugin: "Pipeline", desc: "Soporte para Jenkinsfile (declarative pipeline). Define el pipeline como codigo dentro del repositorio." },
+    { plugin: "Prometheus Metrics", desc: "Expone /prometheus con metricas de Jenkins: builds, jobs, agentes activos. Prometheus lo scrapea para Grafana." },
+    { plugin: "AnsiColor", desc: "Renderiza colores ANSI en la salida de los builds. Util cuando los linters producen output coloreado." },
+];
+
+const groovyInit = [
+    "if (currentRealmClass.contains(\"None\")) {",
+    "    def hudsonRealm = new HudsonPrivateSecurityRealm(false)",
+    "    hudsonRealm.createAccount(\"admin\", \"admin123\")",
+    "    instance.setSecurityRealm(hudsonRealm)",
+    "",
+    "    def strategy = new FullControlOnceLoggedInAuthorizationStrategy()",
+    "    strategy.setAllowAnonymousRead(false)",
+    "    instance.setAuthorizationStrategy(strategy)",
+    "    instance.save()",
+    "}",
+].join("\n");
+---
+
+<DocsLayout
+    title="Jenkins on Kubernetes - ITOps Automation Lab"
+    description="Phase 6 del Rocky Linux ITOps Automation Lab: Jenkins self-hosted en k3s con agentes dinamicos, PVC persistente y RBAC para lanzar pods de build."
+    activePage="jenkins-on-k8s"
+    lang="en"
+    prev={{ label: "Workflow 3: Incident Simulation", href: "/en/aiops-lab/phase-5/workflow-3-incident-simulation" }}
+    next={{ label: "Agentes Dinamicos", href: "/en/aiops-lab/phase-6/dynamic-agents" }}
+>
+    <div class="docs-page">
+        <div class="f6-hero"><div class="f6-hero__top"><div class="f6-hero__badge">Phase 6</div><span class="f6-hero__time">Jenkins LTS</span></div><h1 class="f6-hero__title">Jenkins on Kubernetes<span class="f6-hero__accent"> · CI/CD Self-Hosted</span></h1><p class="f6-hero__subtitle">Jenkins self-hosted corriendo como pod en k3s, con agentes dinamicos que se crean y destruyen por build. Complementa GitHub Actions del Proyecto 1 — tener experiencia con ambos enfoques es un diferenciador en entrevistas.</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">Por que Jenkins en k3s</h2></div>
+            <p class="overview-lead">Jenkins no compite con GitHub Actions — coexisten en industrias distintas. Empresas cloud-native usan Actions. Empresas con infraestructura on-premise usan Jenkins. El portfolio cubre ambos deliberadamente.</p>
+            <div class="why-grid">
+                <div class="why-card"><div class="why-card__title">Self-hosted</div><div class="why-card__desc">Jenkins corre como un pod en el cluster. Esto significa control total sobre el entorno de build, los plugins disponibles y las versiones.</div></div>
+                <div class="why-card"><div class="why-card__title">Agentes dinamicos</div><div class="why-card__desc">Cada build lanza un pod nuevo en k3s. El pod se destruye al terminar. Cero mantenimiento de VMs para builds.</div></div>
+                <div class="why-card"><div class="why-card__title">Pipeline as Code</div><div class="why-card__desc">El Jenkinsfile vive en el repo, junto al codigo. El pipeline se versiona, se audita y se revisa como cualquier otro archivo.</div></div>
+                <div class="why-card"><div class="why-card__title">Dashboards + Metricas</div><div class="why-card__desc">Jenkins expone /prometheus con metricas. Grafana muestra builds, tasa de exito y agentes activos en tiempo real.</div></div>
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">Componentes del Deployment</h2></div>
+            <p class="overview-lead">Cinco recursos de Kubernetes forman el despliegue de Jenkins. Cada uno tiene una responsabilidad clara.</p>
+            <div class="comp-list">
+                {jenkinsComponents.map((c) => (
+                    <div class="comp-row"><div class="comp-row__name">{c.name}</div><div class="comp-row__desc">{c.desc}</div><code class="comp-row__file">{c.file}</code></div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">Configuracion del Primer Arranque</h2></div>
+            <p class="overview-lead">Jenkins normalmente pide configurar un usuario admin en el primer arranque via wizard web. Con el flag <code>-Djenkins.install.runSetupWizard=false</code> y un script Groovy, esto se automatiza.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">Parte del script create-admin.groovy (ConfigMap)</span></div>
+                <pre><code>{groovyInit}</code></pre>
+            </div>
+            <p class="overview-text">El script se monta en <code>/usr/share/jenkins/ref/init.groovy.d/</code>. Jenkins ejecuta todos los scripts en ese directorio al iniciar. Si el security realm ya esta configurado, el script no hace nada — es idempotente.</p>
+
+            <h3 class="subsection-title">Java Options</h3>
+            <div class="opts-list">
+                {jenkinsJavaOpts.map((o) => (
+                    <div class="opt-row"><code class="opt-row__opt">{o.opt}</code><div class="opt-row__desc">{o.desc}</div></div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">04</span><h2 class="overview-h2">Plugins Esenciales</h2></div>
+            <p class="overview-lead">Cinco plugins que transforman Jenkins de un servidor de CI generico en una plataforma integrada con Kubernetes y el observability stack.</p>
+            <div class="plug-list">
+                {keyPlugins.map((p) => (
+                    <div class="plug-row"><code class="plug-row__name">{p.plugin}</code><div class="plug-row__desc">{p.desc}</div></div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">05</span><h2 class="overview-h2">Metricas para Grafana</h2></div>
+            <p class="overview-lead">El plugin Prometheus Metrics expone <code>/prometheus</code> en el puerto 8080. Prometheus scrapea este endpoint y Grafana muestra dashboards con builds, jobs y agentes.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">prometheus/configmap.yml — scrape job para Jenkins</span></div>
+                <pre><code>- job_name: jenkins
+  metrics_path: /prometheus
+  static_configs:
+    - targets: ['jenkins.aiops.svc.cluster.local:8080']</code></pre>
+            </div>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Siguiente: Agentes Dinamicos</h3><p class="cta-card__desc">La pagina siguiente explica como Jenkins lanza pods efimeros por build usando el plugin de Kubernetes — agentes que no existian antes del build y no existen despues.</p></div><a href="/en/aiops-lab/phase-6/dynamic-agents" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Agentes</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f6-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f6-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f6-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f6-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f6-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f6-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f6-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .overview-text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.65; margin-bottom: 1rem; }
+    .overview-text code { font-family: var(--font-mono); font-size: var(--text-xs); background: rgba(255,255,255,0.06); padding: 0.1rem 0.35rem; border-radius: 0.25rem; color: var(--green-300); }
+    .subsection-title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 1.5rem 0 0.75rem; }
+    .why-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 0.5rem; margin-bottom: 1rem; }
+    .why-card { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; }
+    .why-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin-bottom: 0.25rem; }
+    .why-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+    .comp-list { display: flex; flex-direction: column; gap: 0.35rem; }
+    .comp-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; font-size: var(--text-sm); }
+    .comp-row__name { font-weight: 600; color: var(--green-50); min-width: 160px; }
+    .comp-row__desc { color: var(--text-muted); line-height: 1.45; flex: 1; }
+    .comp-row__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); background: none; padding: 0; }
+    .code-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .code-block__header { display: flex; align-items: center; padding: 0.45rem 0.85rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .code-block__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .code-block pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .code-block code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+    .opts-list { display: flex; flex-direction: column; gap: 0.3rem; }
+    .opt-row { display: flex; gap: 0.5rem; padding: 0.45rem 0.75rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.4rem; font-size: var(--text-xs); }
+    .opt-row__opt { font-family: var(--font-mono); color: var(--green-300); white-space: nowrap; background: none; padding: 0; }
+    .opt-row__desc { color: var(--text-muted); line-height: 1.4; }
+    .plug-list { display: flex; flex-direction: column; gap: 0.3rem; }
+    .plug-row { display: flex; gap: 0.5rem; padding: 0.45rem 0.75rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.4rem; font-size: var(--text-xs); }
+    .plug-row__name { font-family: var(--font-mono); font-weight: 600; color: var(--green-300); min-width: 130px; background: none; padding: 0; }
+    .plug-row__desc { color: var(--text-muted); line-height: 1.4; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 700px) { .why-grid { grid-template-columns: 1fr; } .comp-row { flex-wrap: wrap; } .comp-row__name { min-width: auto; width: 100%; } }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

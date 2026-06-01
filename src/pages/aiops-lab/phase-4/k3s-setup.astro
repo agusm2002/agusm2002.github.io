@@ -1,0 +1,202 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+
+const k3sFlags = [
+    { flag: "--write-kubeconfig-mode 644", desc: "Permite leer el kubeconfig sin sudo. Necesario para que el usuario rocky pueda usar kubectl sin permisos elevados." },
+    { flag: "--disable traefik", desc: "Deshabilita el ingress controller por defecto de k3s. El proyecto no necesita un ingress controller en el lab local — se usa port-forward." },
+    { flag: "--disable servicelb", desc: "Deshabilita el load balancer por defecto. En un cluster single-node, los Services se acceden via ClusterIP o NodePort." },
+];
+
+const coreComponents = [
+    { name: "k3s server", desc: "Binario unico que incluye API server, controller manager, scheduler y kubelet. Todo empaquetado en un solo proceso." },
+    { name: "containerd", desc: "Container runtime. Reemplaza a Docker. k3s lo incluye embebido — no requiere instalacion separada." },
+    { name: "flannel", desc: "CNI plugin para networking de pods. k3s lo incluye por defecto. Provee conectividad IP entre pods en el cluster." },
+    { name: "CoreDNS", desc: "DNS interno del cluster. Resuelve nombres de servicios (service.namespace.svc.cluster.local)." },
+    { name: "local-path-provisioner", desc: "Provisioner de storage dinamico. Crea PVCs automaticamente usando el filesystem del nodo. Ideal para single-node." },
+    { name: "metrics-server", desc: "Recolecta metricas de CPU/memoria de pods y nodos. Necesario para HPA y kubectl top." },
+];
+
+const accessSetup = [
+    "sudo cat /etc/rancher/k3s/k3s.yaml",
+    "# Reemplazar 127.0.0.1 por la IP de la VM",
+    "sed -i '' 's/127.0.0.1/192.168.64.10/' ~/.kube/config",
+    "# Verificar conexion",
+    "kubectl get nodes",
+].join("\n");
+---
+
+<DocsLayout
+    title="k3s Setup - ITOps Automation Lab"
+    description="Fase 4 del Rocky Linux ITOps Automation Lab: instalacion y configuracion de k3s — Kubernetes ligero para ARM64, single-node, con containerd y flannel."
+    activePage="k3s-setup"
+    prev={{ label: "Dev Mode vs Production", href: "/aiops-lab/phase-3/dev-vs-prod" }}
+    next={{ label: "Prometheus y Alertmanager", href: "/aiops-lab/phase-4/prometheus-alertmanager" }}
+>
+    <div class="docs-page">
+        <div class="f4-hero">
+            <div class="f4-hero__top"><div class="f4-hero__badge">Fase 4.1</div><span class="f4-hero__time">k3s v1.29</span></div>
+            <h1 class="f4-hero__title">k3s Setup<span class="f4-hero__accent"> · Kubernetes Lightweight</span></h1>
+            <p class="f4-hero__subtitle">k3s es Kubernetes empaquetado en un solo binario de menos de 100 MB. Certificado por la CNCF, diseniado para ARM64 y entornos con recursos limitados. La base sobre la que corre todo el observability stack.</p>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">Por que k3s y no kubeadm</h2></div>
+            <p class="overview-lead">k3s elimina la complejidad de instalacion de Kubernetes sin sacrificar compatibilidad. Un solo comando instala el cluster completo. Ideal para single-node labs donde kubeadm seria sobredimensionado.</p>
+            <div class="why-grid">
+                <div class="why-card"><div class="why-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="why-card__title">Un binario</div><div class="why-card__desc">API server, scheduler, controller manager y kubelet en un solo proceso. Menos de 100 MB.</div></div>
+                <div class="why-card"><div class="why-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></div><div class="why-card__title">ARM64 nativo</div><div class="why-card__desc">Diseniado para ARM. Corre en Raspberry Pi y VMs Ampere A1 de Oracle Cloud sin modificaciones.</div></div>
+                <div class="why-card"><div class="why-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div class="why-card__title">Certificado CNCF</div><div class="why-card__desc">Pasa todas las pruebas de conformidad de Kubernetes. Lo que corre en k3s corre en cualquier cluster certificado.</div></div>
+                <div class="why-card"><div class="why-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg></div><div class="why-card__title">Todo incluido</div><div class="why-card__desc">containerd, flannel, CoreDNS y local-path-provisioner vienen preconfigurados. Cero dependencias externas.</div></div>
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">Instalacion</h2></div>
+            <p class="overview-lead">El playbook de Ansible <code>k3s.yml</code> aplica el hardening base y luego instala k3s con un solo comando. La instalacion es idempotente: si k3s ya existe, Ansible no lo reinstala.</p>
+
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">ansible/playbooks/k3s.yml (extracto)</span></div>
+                <pre><code>- name: Instalar k3s (single-node, ARM64)
+  shell: |
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION=v1.29.0+k3s1 sh -s - \
+      --write-kubeconfig-mode 644 \
+      --disable traefik \
+      --disable servicelb
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Esperar a que k3s este listo
+  command: k3s kubectl get nodes
+  changed_when: false
+  retries: 10
+  delay: 10
+  register: result
+  until: result.rc == 0</code></pre>
+            </div>
+
+            <h3 class="subsection-title">Flags de instalacion</h3>
+            <div class="flags-list">
+                {k3sFlags.map((f) => (
+                    <div class="flag-row">
+                        <code class="flag-row__flag">{f.flag}</code>
+                        <div class="flag-row__desc">{f.desc}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">Componentes del Cluster</h2></div>
+            <p class="overview-lead">k3s incluye todo lo necesario para un cluster funcional sin dependencias externas. Estos son los componentes que corren en la VM.</p>
+            <div class="comp-list">
+                {coreComponents.map((c) => (
+                    <div class="comp-row"><div class="comp-row__name">{c.name}</div><div class="comp-row__desc">{c.desc}</div></div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">04</span><h2 class="overview-h2">Acceso Remoto</h2></div>
+            <p class="overview-lead">k3s guarda el kubeconfig en <code>/etc/rancher/k3s/k3s.yaml</code>. Para administrar el cluster desde la maquina local, se copia este archivo y se reemplaza la IP.</p>
+            <div class="terminal-block">
+                <div class="terminal-block__bar"><div class="terminal-block__dots"><span></span><span></span><span></span></div><span class="terminal-block__title">setup kubeconfig</span></div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-comment"># Copiar kubeconfig de la VM a la maquina local</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">scp -P 2222 rocky@192.168.64.10:/etc/rancher/k3s/k3s.yaml ~/.kube/config</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Reemplazar 127.0.0.1 por la IP de la VM</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">sed -i '' 's/127.0.0.1/192.168.64.10/' ~/.kube/config</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Verificar conexion</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">kubectl get nodes</span></div>
+                    <div class="t-line"><span class="t-out">NAME       STATUS   ROLES                  AGE   VERSION</span></div>
+                    <div class="t-line"><span class="t-out">rocky-vm   Ready    control-plane,master   5m    v1.29.4+k3s1</span></div>
+                </div>
+            </div>
+            <div class="info-card info-card--warn"><div class="info-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="info-card__text"><strong>El kubeconfig contiene credenciales de admin.</strong> No se comparte ni se commitea. En Oracle Cloud, el acceso se hace via port-forward a traves del bastion — el kubeconfig nunca sale del entorno controlado.</div></div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">05</span><h2 class="overview-h2">Namespace aiops</h2></div>
+            <p class="overview-lead">Todo el stack corre en el namespace <code>aiops</code>. Los manifiestos en <code>k3s/manifests/</code> asumen este namespace como destino.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">k3s/manifests/namespace.yml</span></div>
+                <pre><code>apiVersion: v1
+kind: Namespace
+metadata:
+  name: aiops
+  labels:
+    vault.hashicorp.com/agent-inject: "enabled"</code></pre>
+            </div>
+            <p class="overview-text">La label <code>vault.hashicorp.com/agent-inject: "enabled"</code> indica al Vault Agent Injector que los pods en este namespace son candidatos para la inyeccion de secrets. Sin esta label, el Injector ignora los pods del namespace.</p>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Siguiente: Prometheus y Alertmanager</h3><p class="cta-card__desc">Con k3s corriendo, la primera capa del observability stack es Prometheus para metricas y Alertmanager para enrutar alertas a n8n.</p></div><a href="/aiops-lab/phase-4/prometheus-alertmanager" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Prometheus</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f4-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f4-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f4-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f4-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f4-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f4-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f4-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; }
+    .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .overview-text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.65; margin-bottom: 1rem; }
+    .overview-text code { font-family: var(--font-mono); font-size: var(--text-xs); background: rgba(255,255,255,0.06); padding: 0.1rem 0.35rem; border-radius: 0.25rem; color: var(--green-300); }
+    .subsection-title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 1.5rem 0 0.75rem; }
+    .why-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 0.5rem; margin-bottom: 1rem; }
+    .why-card { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.1rem; }
+    .why-card__icon { color: var(--green-400); margin-bottom: 0.5rem; }
+    .why-card__icon svg { width: 18px; height: 18px; display: block; }
+    .why-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin-bottom: 0.25rem; }
+    .why-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+    .flags-list { display: flex; flex-direction: column; gap: 0.35rem; }
+    .flag-row { display: flex; gap: 0.65rem; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; font-size: var(--text-sm); }
+    .flag-row__flag { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); background: none; padding: 0; white-space: nowrap; }
+    .flag-row__desc { color: var(--text-muted); line-height: 1.45; }
+    .comp-list { display: flex; flex-direction: column; gap: 0.35rem; }
+    .comp-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; font-size: var(--text-sm); }
+    .comp-row__name { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600; color: var(--green-300); min-width: 140px; }
+    .comp-row__desc { color: var(--text-muted); line-height: 1.45; }
+    .code-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .code-block__header { display: flex; align-items: center; padding: 0.45rem 0.85rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .code-block__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .code-block pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .code-block code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+    .terminal-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; font-family: var(--font-mono); font-size: var(--text-xs); margin-bottom: 1rem; }
+    .terminal-block__bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .terminal-block__dots { display: flex; gap: 0.3rem; }
+    .terminal-block__dots span { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); display: block; }
+    .terminal-block__title { color: var(--text-dim); font-size: var(--text-2xs); margin-left: auto; margin-right: auto; padding-right: 2.5rem; }
+    .terminal-block__body { padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 0.1rem; }
+    .t-line { line-height: 1.5; }
+    .t-line--spacer { height: 0.35rem; }
+    .t-prompt { color: var(--green-600); margin-right: 0.3rem; }
+    .t-cmd { color: var(--green-300); }
+    .t-out { color: var(--text-dim); padding-left: 1.1rem; }
+    .t-comment { color: rgba(255,255,255,0.25); font-style: italic; padding-left: 0; }
+    .info-card { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+    .info-card--warn { border-color: rgba(234,179,8,0.25); background: rgba(234,179,8,0.04); }
+    .info-card--warn .info-card__icon { color: #eab308; }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .info-card__text code { font-family: var(--font-mono); font-size: var(--text-xs); background: rgba(255,255,255,0.06); padding: 0.1rem 0.35rem; border-radius: 0.25rem; color: var(--green-300); }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 700px) { .why-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

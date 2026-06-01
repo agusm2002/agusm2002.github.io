@@ -1,0 +1,44 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+const links = [
+    { cat: "Documentacion Oficial", items: [{ name: "k3s", url: "https://docs.k3s.io" }, { name: "ArgoCD", url: "https://argo-cd.readthedocs.io" }, { name: "OpenTofu", url: "https://opentofu.org/docs" }, { name: "n8n", url: "https://docs.n8n.io" }, { name: "Rocky Linux", url: "https://docs.rockylinux.org" }] },
+    { cat: "Oracle Cloud", items: [{ name: "OCI Provider (OpenTofu)", url: "https://registry.opentofu.org/providers/oracle/oci" }, { name: "OCI Free Tier", url: "https://www.oracle.com/cloud/free/" }, { name: "OCI Vault", url: "https://docs.oracle.com/en-us/iaas/Content/KeyManagement/home.htm" }, { name: "OCI Object Storage", url: "https://docs.oracle.com/en-us/iaas/Content/Object/home.htm" }] },
+    { cat: "Observability", items: [{ name: "Prometheus", url: "https://prometheus.io/docs" }, { name: "Grafana Alloy", url: "https://grafana.com/docs/alloy/latest/" }, { name: "Loki", url: "https://grafana.com/docs/loki/latest/" }, { name: "Alertmanager", url: "https://prometheus.io/docs/alerting/latest/alertmanager/" }] },
+    { cat: "Conceptos", items: [{ name: "SLO/SLI (Google SRE Book)", url: "https://sre.google/sre-book/service-level-objectives/" }, { name: "OpenCode Go API", url: "https://opencode.ai/docs/es/go/" }, { name: "Jenkins on Kubernetes", url: "https://www.jenkins.io/doc/book/installing/kubernetes/" }, { name: "Fail2Ban", url: "https://github.com/fail2ban/fail2ban" }] },
+];
+---
+
+<DocsLayout title="Recursos y Links - ITOps Automation Lab" activePage="resources-links"
+    prev={{ label: "Lecciones Aprendidas", href: "/aiops-lab/reference/lessons-learned" }}
+>
+    <div class="docs-page">
+        <div class="h"><div class="h__top"><div class="h__badge">Reference</div><span class="h__time">Links</span></div><h1 class="h__title">Recursos y Links<span class="h__accent"> · Referencia</span></h1><p class="h__sub">Documentacion oficial de cada herramienta usada en el proyecto. Organizada por categoria para referencia rapida.</p></div>
+        {links.map((g) => (
+            <div class="lg">
+                <div class="lg__cat">{g.cat}</div>
+                <div class="lg__items">
+                    {g.items.map((l) => (
+                        <a href={l.url} target="_blank" rel="noopener noreferrer" class="li">{l.name}<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>
+                    ))}
+                </div>
+            </div>
+        ))}
+    </div>
+</DocsLayout>
+
+<style>
+    .docs-page { max-width: 740px; }
+    .h { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .h__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .h__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .h__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .h__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .h__accent { color: var(--green-500); font-weight: 500; }
+    .h__sub { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .lg { margin-bottom: 1.5rem; }
+    .lg__cat { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin-bottom: 0.4rem; }
+    .lg__items { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+    .li { display: inline-flex; align-items: center; gap: 0.3rem; font-size: var(--text-sm); color: var(--green-300); background: rgba(255,255,255,0.02); border: 1px solid var(--border); padding: 0.35rem 0.6rem; border-radius: 0.35rem; text-decoration: none; transition: background 0.2s; }
+    .li:hover { background: rgba(255,255,255,0.06); }
+    .li svg { width: 12px; height: 12px; opacity: 0.5; }
+</style>

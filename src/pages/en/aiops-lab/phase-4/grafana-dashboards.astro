@@ -1,0 +1,144 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+const dashboardPanels = [
+    { section: "Cluster Health", panels: ["Pods Running/Failed", "Service Status (up/down por job)", "CPU Usage (node)", "Memory Usage (node)", "Disk Usage (PVCs)"] },
+    { section: "n8n Stats", panels: ["Workflows activos", "Ejecuciones exitosas vs fallidas", "Tiempo promedio de ejecucion", "Uso de memoria del pod n8n"] },
+    { section: "SLO Tracking", panels: ["Disponibilidad Grafana (30d rolling)", "Error budget restante (minutos)", "Disponibilidad n8n (30d rolling)", "Tasa de error en procesamiento de alertas"] },
+    { section: "Logs Overview", panels: ["Logs recientes (ultimas 100 lineas)", "Conteo de errores por app (24h)", "Patrones de log frecuentes"] },
+];
+
+const grafanaConfig = [
+    "GF_AUTH_ANONYMOUS_ENABLED: \"true\"",
+    "GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer",
+    "GF_AUTH_BASIC_ENABLED: \"true\"",
+    "GF_SECURITY_ADMIN_USER: admin",
+    "GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/cluster-overview.json",
+    "GF_USERS_VIEWERS_CAN_EDIT: \"false\"",
+].join("\n");
+
+const provisioningMechanism = [
+    { step: "1", title: "ConfigMap con JSON", desc: "El dashboard JSON se almacena en un ConfigMap (dashboard-configmap.yml) bajo la clave cluster-overview.json." },
+    { step: "2", title: "Dashboard Provider", desc: "Otro ConfigMap (grafana-dashboards-provider) le dice a Grafana que busque dashboards en /var/lib/grafana/dashboards." },
+    { step: "3", title: "Montaje en el pod", desc: "Ambos ConfigMaps se montan como volumen en el Deployment de Grafana. El JSON aparece como archivo en /var/lib/grafana/dashboards/." },
+    { step: "4", title: "Auto-load", desc: "Grafana lee el directorio al iniciar. Cualquier archivo .json que encuentre se importa automaticamente como dashboard." },
+];
+---
+
+<DocsLayout
+    title="Grafana Dashboards - ITOps Automation Lab"
+    description="Phase 4 del Rocky Linux ITOps Automation Lab: Grafana con dashboards preconfigurados, acceso anonimo y provisioning automatico via ConfigMaps."
+    activePage="grafana-dashboards"
+    lang="en"
+    prev={{ label: "Loki y Grafana Alloy", href: "/en/aiops-lab/phase-4/loki-grafana-alloy" }}
+    next={{ label: "n8n Deployment", href: "/en/aiops-lab/phase-4/n8n-deployment" }}
+>
+    <div class="docs-page">
+        <div class="f4-hero"><div class="f4-hero__top"><div class="f4-hero__badge">Phase 4.4</div><span class="f4-hero__time">Grafana</span></div><h1 class="f4-hero__title">Grafana Dashboards<span class="f4-hero__accent"> · Visualizacion</span></h1><p class="f4-hero__subtitle">Grafana unifica metricas de Prometheus y logs de Loki en un solo dashboard. Los dashboards estan preconfigurados en ConfigMaps y se provisionan automaticamente al iniciar el pod. Acceso anonimo habilitado para modo demo.</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">Configuracion</h2></div>
+            <p class="overview-lead">Grafana se configura completamente via variables de entorno. No requiere archivos de configuracion — todo esta en el Deployment.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">Variables de entorno en grafana/deployment.yml</span></div>
+                <pre><code>{grafanaConfig}</code></pre>
+            </div>
+            <div class="info-card"><div class="info-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="info-card__text"><strong>Acceso anonimo en Viewer.</strong> Cualquier persona que acceda al dashboard ve los graficos pero no puede modificar nada. El login de admin (admin/admin) permite editar dashboards y datasources.</div></div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">Paneles del Dashboard</h2></div>
+            <p class="overview-lead">El dashboard principal (cluster-overview) tiene cuatro secciones que cubren salud del cluster, estadisticas de n8n, tracking de SLOs y exploracion de logs.</p>
+            <div class="panels-list">
+                {dashboardPanels.map((s) => (
+                    <div class="panel-group">
+                        <div class="panel-group__section">{s.section}</div>
+                        <div class="panel-group__items">
+                            {s.panels.map((p) => <span class="panel-tag">{p}</span>)}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">Provisioning Automatico</h2></div>
+            <p class="overview-lead">Los dashboards no se importan manualmente desde la UI. Se almacenan en ConfigMaps y Grafana los carga al iniciar. Si el pod se reinicia, los dashboards vuelven automaticamente.</p>
+            <div class="prov-list">
+                {provisioningMechanism.map((p) => (
+                    <div class="prov-row"><div class="prov-row__num">{p.step}</div><div class="prov-row__content"><div class="prov-row__title">{p.title}</div><div class="prov-row__desc">{p.desc}</div></div></div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">04</span><h2 class="overview-h2">Acceso</h2></div>
+            <p class="overview-lead">En el lab local, Grafana se accede via port-forward. En Oracle Cloud, se expone via Ingress con HTTPS publico para la demo.</p>
+            <div class="terminal-block"><div class="terminal-block__bar"><div class="terminal-block__dots"><span></span><span></span><span></span></div><span class="terminal-block__title">acceso</span></div><div class="terminal-block__body">
+                <div class="t-line"><span class="t-comment"># Lab local — port-forward</span></div>
+                <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">kubectl port-forward svc/grafana -n aiops 3000:80</span></div>
+                <div class="t-line"><span class="t-out">Forwarding from 127.0.0.1:3000 -> 3000</span></div>
+                <div class="t-line t-line--spacer"></div>
+                <div class="t-line"><span class="t-comment"># Oracle Cloud — Ingress publico</span></div>
+                <div class="t-line"><span class="t-out">https://grafana.aiops.tudominio.com  (anonimo, solo lectura)</span></div>
+                <div class="t-line"><span class="t-out">https://grafana.aiops.tudominio.com/login  (admin/admin, edicion)</span></div>
+            </div></div>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Siguiente: n8n Deployment</h3><p class="cta-card__desc">La ultima pieza del stack: n8n como plataforma de automatizacion con 7 workflows preconfigurados para respuesta a incidentes con LLM.</p></div><a href="/en/aiops-lab/phase-4/n8n-deployment" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>n8n</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f4-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f4-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f4-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f4-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f4-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f4-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f4-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .code-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .code-block__header { display: flex; align-items: center; padding: 0.45rem 0.85rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .code-block__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .code-block pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .code-block code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+    .info-card { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .panels-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .panel-group { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.75rem 0.9rem; }
+    .panel-group__section { font-family: var(--font-display); font-size: var(--text-sm); font-weight: 600; color: var(--green-50); margin-bottom: 0.4rem; }
+    .panel-group__items { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+    .panel-tag { font-size: var(--text-xs); color: var(--text-muted); padding: 0.15rem 0.4rem; border-radius: 0.25rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .prov-list { display: flex; flex-direction: column; gap: 0.35rem; }
+    .prov-row { display: flex; gap: 0.65rem; padding: 0.5rem 0.8rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; }
+    .prov-row__num { display: flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); font-family: var(--font-mono); font-size: var(--text-2xs); font-weight: 600; color: var(--green-400); flex-shrink: 0; }
+    .prov-row__title { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600; color: var(--green-300); margin-bottom: 0.1rem; }
+    .prov-row__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.45; }
+    .terminal-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; font-family: var(--font-mono); font-size: var(--text-xs); margin-bottom: 1.5rem; }
+    .terminal-block__bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .terminal-block__dots { display: flex; gap: 0.3rem; }
+    .terminal-block__dots span { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); display: block; }
+    .terminal-block__title { color: var(--text-dim); font-size: var(--text-2xs); margin-left: auto; margin-right: auto; padding-right: 2.5rem; }
+    .terminal-block__body { padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 0.1rem; }
+    .t-line { line-height: 1.5; } .t-line--spacer { height: 0.35rem; }
+    .t-prompt { color: var(--green-600); margin-right: 0.3rem; }
+    .t-cmd { color: var(--green-300); }
+    .t-out { color: var(--text-dim); padding-left: 0; }
+    .t-comment { color: rgba(255,255,255,0.25); font-style: italic; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

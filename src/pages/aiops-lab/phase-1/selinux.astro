@@ -1,0 +1,1236 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+
+// Helpers para escapar {{ }} de Jinja2/Ansible en bloques de código
+const O = "{{";
+const C = "}}";
+
+const selinuxModes = [
+    {
+        mode: "Enforcing",
+        label: "Activo",
+        desc: "Bloquea y registra. Todo lo que no está en la política se niega y se loguea. Es el modo que usamos: ni siquiera root puede saltearlo.",
+        color: "green",
+    },
+    {
+        mode: "Permissive",
+        label: "Solo registro",
+        desc: "No bloquea nada, pero registra lo que habría bloqueado. Sirve para debuggear políticas sin romper el sistema.",
+        color: "yellow",
+    },
+    {
+        mode: "Disabled",
+        label: "Desactivado",
+        desc: "Apagado del todo. Así viene Ubuntu por default. No lo usamos: si lo desactivás, perdés toda la capa de MAC.",
+        color: "red",
+    },
+];
+
+const selinuxBooleans = [
+    {
+        name: "container_manage_cgroup",
+        desc: "Permitir que containerd gestione cgroups. Sin esto, k3s no puede limitar recursos de los pods.",
+        impact: "k3s no arranca si está en false.",
+    },
+    {
+        name: "virt_use_nfs",
+        desc: "Permitir acceso a volúmenes NFS desde procesos de virtualización. Necesario para PVCs con backend NFS.",
+        impact: "PVCs con NFS se quedan en Pending.",
+    },
+];
+
+const selinuxContexts = [
+    { context: "container_file_t", desc: "Archivos que los contenedores leen/escriben: volúmenes, config maps, sockets.", example: "Pod volumes, ConfigMap mounts" },
+    { context: "container_runtime_exec_t", desc: "Binarios del runtime: containerd, runc, cri-o.", example: "/usr/bin/containerd" },
+    { context: "ssh_port_t", desc: "Puerto SSH. Se actualiza con semanage al mover de 22 a 2222.", example: "tcp/2222" },
+];
+
+const troubleshooting = [
+    {
+        symptom: "k3s no inicia: permission denied en containerd",
+        cause: "container_manage_cgroup está en false.",
+        fix: "setsebool -P container_manage_cgroup on",
+    },
+    {
+        symptom: "Un pod no puede escribir en un PersistentVolume",
+        cause: "El volumen no tiene contexto container_file_t.",
+        fix: "chcon -Rt container_file_t /ruta/al/volumen",
+    },
+    {
+        symptom: "SSH no responde después de cambiar el puerto a 2222",
+        cause: "SELinux no conoce el puerto 2222 como ssh_port_t.",
+        fix: "semanage port -a -t ssh_port_t -p tcp 2222",
+    },
+    {
+        symptom: "Algo falla sin error claro: denegación silenciosa",
+        cause: "SELinux bloquea en enforcing y no siempre grita en stdout.",
+        fix: "ausearch -m avc -ts recent | audit2why",
+    },
+];
+---
+
+<DocsLayout
+    title="Configuración de SELinux - ITOps Automation Lab"
+    description="Fase 1.3 del Rocky Linux ITOps Automation Lab: SELinux enforcing: mandatory access control, booleanos para k3s, contextos y troubleshooting."
+    activePage="selinux"
+    prev={{
+        label: "Base Setup",
+        href: "/aiops-lab/phase-1/base-setup",
+    }}
+    next={{
+        label: "Firewalld & Seguridad de Red",
+        href: "/aiops-lab/phase-1/firewalld",
+    }}
+>
+    <div class="docs-page">
+        <!-- ═══ Hero ═══ -->
+        <div class="f1-hero">
+            <div class="f1-hero__top">
+                <div class="f1-hero__badge">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    Fase 1.3
+                </div>
+                <span class="f1-hero__time">Rocky Linux 9 · SELinux</span>
+            </div>
+
+            <h1 class="f1-hero__title">
+                SELinux
+                <span class="f1-hero__accent">· Mandatory Access Control</span>
+            </h1>
+            <p class="f1-hero__subtitle">
+                La diferencia más grande entre Rocky y Ubuntu. SELinux pone una
+                segunda capa de control de acceso que ni root puede saltear.
+                En este proyecto nunca se desactiva. Se configura para que
+                conviva con k3s.
+            </p>
+        </div>
+
+        <!-- ═══ MAC vs DAC ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <h2 class="overview-h2">¿Por qué no desactivarlo como hace todo el mundo?</h2>
+            </div>
+            <p class="overview-lead">
+                Sin SELinux, un proceso que corre como root tiene acceso a todo.
+                SELinux agrega MAC: cada proceso, archivo y puerto tiene un
+                <em>contexto de seguridad</em>, y el kernel aplica reglas que ni
+                root puede eludir. Así de simple.
+            </p>
+
+            <div class="compare-grid">
+                <div class="compare-card compare-card--dac">
+                    <div class="compare-card__header">
+                        <span class="compare-card__label">DAC</span>
+                        <span class="compare-card__title">Permisos POSIX</span>
+                    </div>
+                    <div class="compare-card__body">
+                        <ul>
+                            <li>Usuario, grupo, otros (rwx)</li>
+                            <li>Root puede todo</li>
+                            <li>Un proceso comprometido como root = sistema comprometido</li>
+                            <li>No hay control sobre qué puede hacer un proceso con lo que lee</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="compare-card compare-card--mac">
+                    <div class="compare-card__header">
+                        <span class="compare-card__label">MAC</span>
+                        <span class="compare-card__title">SELinux</span>
+                    </div>
+                    <div class="compare-card__body">
+                        <ul>
+                            <li>Contextos de seguridad en cada objeto del sistema</li>
+                            <li>Ni root puede eludir las reglas</li>
+                            <li>Un proceso comprometido solo accede a lo que su política permite</li>
+                            <li>Cada transición entre contextos está controlada</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <p class="overview-text">
+                <strong>Caso concreto:</strong> si alguien explota Grafana y
+                escala a root, sin SELinux puede leer <code>/etc/shadow</code>.
+                Con enforcing, el proceso tiene contexto <code>container_t</code>
+                y el kernel le niega el acceso a archivos <code>shadow_t</code>,
+                aunque se haya escapado a root. La política gana.
+            </p>
+        </div>
+
+        <!-- ═══ Modos ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <h2 class="overview-h2">Los tres modos</h2>
+            </div>
+            <p class="overview-lead">
+                Enforcing bloquea. Permissive solo registra. Disabled apaga todo.
+                SELinux tiene tres estados operativos. Este proyecto usa
+                exclusivamente enforcing. Es el único modo que tiene sentido
+                en un entorno que se presenta como hardening de producción.
+            </p>
+
+            <div class="modes-grid">
+                {selinuxModes.map((m) => (
+                    <div class={`mode-card mode-card--${m.color}`}>
+                        <div class="mode-card__header">
+                            <div class="mode-card__dot"></div>
+                            <div>
+                                <div class="mode-card__name">{m.mode}</div>
+                                <div class="mode-card__label">{m.label}</div>
+                            </div>
+                        </div>
+                        <p class="mode-card__desc">{m.desc}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div class="info-card info-card--warn">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>No poner SELinux en modo Permissive o Disabled.</strong>
+                    Si se hace, los problemas de políticas que aparezcan en
+                    Oracle Cloud van a ser una sorpresa. Lo correcto es mantener
+                    enforcing desde el día 1 y resolver las denegaciones con
+                    booleanos o contextos.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ El Rol ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">03</span>
+                <h2 class="overview-h2">El rol en Ansible</h2>
+            </div>
+            <p class="overview-lead">
+                SELinux en enforcing y booleanos para k3s activados. Cero
+                configuración manual. Ansible lo aplica.
+            </p>
+
+            <h3 class="subsection-title">Defaults</h3>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">roles/selinux/defaults/main.yml</span>
+                </div>
+                <pre><code>selinux_mode: enforcing
+
+selinux_booleans:
+  - name: container_manage_cgroup
+    state: true
+  - name: virt_use_nfs
+    state: true</code></pre>
+            </div>
+
+            <h3 class="subsection-title">Tasks</h3>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">roles/selinux/tasks/main.yml</span>
+                </div>
+                <pre><code>- name: Instalar policycoreutils-python-utils (semanage, getsebool)
+  ansible.builtin.dnf:
+    name: policycoreutils-python-utils
+    state: present
+
+- name: Verificar que SELinux esté en modo enforcing
+  ansible.builtin.selinux:
+    policy: targeted
+    state: "{O} selinux_mode {C}"
+
+- name: Configurar booleanos de SELinux para k3s y servicios
+  ansible.posix.seboolean:
+    name: "{O} item.name {C}"
+    state: "{O} item.state {C}"
+    persistent: true
+  loop: "{O} selinux_booleans {C}"
+
+- name: Mostrar estado de SELinux
+  ansible.builtin.command:
+    cmd: sestatus
+  changed_when: false
+  register: selinux_status
+
+- name: Debug — estado de SELinux
+  ansible.builtin.debug:
+    var: selinux_status.stdout_lines</code></pre>
+            </div>
+
+            <p class="overview-text">
+                La tarea <code>ansible.builtin.selinux</code> es el core del
+                rol. Asegura que la política <code>targeted</code> esté activa
+                en modo enforcing. La política targeted es la estándar en RHEL
+                — protege los servicios más comunes sin requerir reglas para
+                cada proceso del sistema.
+            </p>
+        </div>
+
+        <!-- ═══ Booleanos ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">04</span>
+                <h2 class="overview-h2">Booleanos que k3s necesita</h2>
+            </div>
+            <p class="overview-lead">
+                Los booleanos son interruptores de la política. Modifican lo que SELinux permite o bloquea para funcionalidades
+                específicas.
+            </p>
+
+            <div class="boolean-list">
+                {selinuxBooleans.map((b) => (
+                    <div class="boolean-card">
+                        <div class="boolean-card__name">
+                            <code>{b.name}</code>
+                        </div>
+                        <div class="boolean-card__desc">{b.desc}</div>
+                        <div class="boolean-card__impact">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            {b.impact}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <p class="overview-text">
+                Para verificar los booleanos manualmente después de correr el
+                playbook:
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">verificar booleanos</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> getsebool -a | grep -E 'container_manage_cgroup|virt_use_nfs'</span></div>
+                    <div class="t-line"><span class="t-out">container_manage_cgroup --> <span class="t-ok">on</span></span></div>
+                    <div class="t-line"><span class="t-out">virt_use_nfs --> <span class="t-ok">on</span></span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Contextos ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">05</span>
+                <h2 class="overview-h2">Contextos que vas a ver seguido</h2>
+            </div>
+            <p class="overview-lead">
+                Cada archivo, proceso y puerto tiene un contexto SELinux. Estos
+                son los tres que aparecen una y otra vez en el lab.
+            </p>
+
+            <div class="context-grid">
+                {selinuxContexts.map((ctx) => (
+                    <div class="context-card">
+                        <div class="context-card__ctx">
+                            <code>{ctx.context}</code>
+                        </div>
+                        <div class="context-card__desc">{ctx.desc}</div>
+                        <div class="context-card__example">
+                            <span class="context-card__example-label">Ejemplo:</span>
+                            <code>{ctx.example}</code>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <p class="overview-text">
+                Para ver el contexto de un archivo o directorio, se usa
+                <code>ls -Z</code>. Para cambiarlo temporalmente,
+                <code>chcon</code>. Para hacer el cambio persistente,
+                <code>semanage fcontext</code> + <code>restorecon</code>.
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">contextos</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-comment"># Ver contexto de un archivo</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> ls -Z /etc/ssh/sshd_config</span></div>
+                    <div class="t-line"><span class="t-out">system_u:object_r:etc_t:s0 /etc/ssh/sshd_config</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Ver contexto de un proceso</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> ps -eZ | grep containerd</span></div>
+                    <div class="t-line"><span class="t-out">system_u:system_r:container_runtime_t:s0 890 ? 00:12 containerd</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Verificación ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">06</span>
+                <h2 class="overview-h2">Chequear que SELinux ande</h2>
+            </div>
+            <p class="overview-lead">
+                Playbook terminado → confirmar que SELinux está enforcing y
+                los booleanos activos.
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">verify-selinux.sh</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-comment"># Modo actual</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> getenforce</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">Enforcing</span></span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Estado completo</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> sestatus</span></div>
+                    <div class="t-line"><span class="t-out">SELinux status: <span class="t-ok">enabled</span></span></div>
+                    <div class="t-line"><span class="t-out">SELinuxfs mount: /sys/fs/selinux</span></div>
+                    <div class="t-line"><span class="t-out">Current mode: <span class="t-ok">enforcing</span></span></div>
+                    <div class="t-line"><span class="t-out">Policy from config file: targeted</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Booleanos de k3s activos</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> getsebool container_manage_cgroup virt_use_nfs</span></div>
+                    <div class="t-line"><span class="t-out">container_manage_cgroup --> <span class="t-ok">on</span></span></div>
+                    <div class="t-line"><span class="t-out">virt_use_nfs --> <span class="t-ok">on</span></span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># Denegaciones recientes (debería estar vacío si todo funciona)</span></div>
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd"> ausearch -m avc -ts recent 2>/dev/null | head -5</span></div>
+                    <div class="t-line"><span class="t-out"><span class="t-ok">(sin output — sin denegaciones recientes)</span></span></div>
+                </div>
+            </div>
+
+            <div class="info-card info-card--tip">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <div class="info-card__text">
+                    Si <code>ausearch</code> muestra denegaciones (AVC), usar
+                    <code>audit2why &lt; /var/log/audit/audit.log</code> para
+                    obtener una explicación legible de qué booleano o contexto
+                    falta.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Troubleshooting ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">07</span>
+                <h2 class="overview-h2">Cuando SELinux rompe algo</h2>
+            </div>
+            <p class="overview-lead">
+                Casi siempre es un booleano en false o un contexto incorrecto.
+                Estos son los errores que van a aparecer con k3s.
+            </p>
+
+            <div class="ts-grid">
+                {troubleshooting.map((ts) => (
+                    <div class="ts-card">
+                        <div class="ts-card__symptom">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            {ts.symptom}
+                        </div>
+                        <div class="ts-card__cause">
+                            <span class="ts-card__label">Causa:</span> {ts.cause}
+                        </div>
+                        <div class="ts-card__fix">
+                            <span class="ts-card__label">Solución:</span>
+                            <code>{ts.fix}</code>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <!-- ═══ SELinux vs AppArmor ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">08</span>
+                <h2 class="overview-h2">SELinux vs AppArmor</h2>
+            </div>
+            <p class="overview-lead">
+                Ubuntu trae AppArmor, Rocky trae SELinux. No son lo mismo y no
+                se reemplazan. Tener experiencia con ambos marca diferencia.
+            </p>
+
+            <div class="compare-grid">
+                <div class="compare-card compare-card--selinux">
+                    <div class="compare-card__header">
+                        <span class="compare-card__label">RHEL/Rocky</span>
+                        <span class="compare-card__title">SELinux</span>
+                    </div>
+                    <div class="compare-card__body">
+                        <ul>
+                            <li>Etiquetas en cada objeto del filesystem (inodo)</li>
+                            <li>Política centralizada (<code>targeted</code>)</li>
+                            <li>Booleanos para ajustar sin tocar la política</li>
+                            <li>Viene enforcing por defecto en Rocky 9</li>
+                            <li>Mayor granularidad, mayor complejidad</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="compare-card compare-card--apparmor">
+                    <div class="compare-card__header">
+                        <span class="compare-card__label">Ubuntu</span>
+                        <span class="compare-card__title">AppArmor</span>
+                    </div>
+                    <div class="compare-card__body">
+                        <ul>
+                            <li>Perfiles por aplicación basados en path</li>
+                            <li>Modo complain/deny por perfil individual</li>
+                            <li>Más simple de configurar</li>
+                            <li>Menos granularidad: basa las reglas en rutas de archivo</li>
+                            <li>Viene con perfiles más permisivos por defecto</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <p class="overview-text">
+                <strong>¿Por qué el proyecto usa SELinux?</strong> Porque es
+                el estándar en entornos RHEL, que dominan el mercado
+                enterprise. Tener un proyecto con
+                SELinux enforcing demuestra que se entiende la
+                capa de seguridad que los entornos corporativos exigen.
+            </p>
+        </div>
+
+        <!-- ═══ CTA ═══ -->
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card">
+                <div class="cta-card__content">
+                    <h3 class="cta-card__title">Siguiente: Firewalld</h3>
+                    <p class="cta-card__desc">
+                        Con SELinux protegiendo el acceso a nivel de kernel, la
+                        siguiente capa es firewalld, el firewall de red que
+                        controla qué puertos y servicios son accesibles desde
+                        fuera de la VM.
+                    </p>
+                </div>
+                <a href="/aiops-lab/phase-1/firewalld" class="cta-card__btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>
+                    Firewalld & Seguridad de Red
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page {
+        max-width: 740px;
+    }
+
+    /* ── Hero ── */
+    .f1-hero {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.75rem;
+        margin-bottom: 3rem;
+    }
+
+    .f1-hero__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+
+    .f1-hero__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+
+    .f1-hero__time {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.4rem;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .f1-hero__title {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 700;
+        color: var(--green-50);
+        line-height: 1.15;
+        margin-bottom: 0.5rem;
+    }
+
+    .f1-hero__accent {
+        color: var(--green-500);
+        font-weight: 500;
+    }
+
+    .f1-hero__subtitle {
+        font-size: var(--text-md);
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 560px;
+    }
+
+    /* ── Sections ── */
+    .overview-section {
+        margin-bottom: 3rem;
+    }
+
+    .overview-section--cta {
+        margin-top: 1rem;
+    }
+
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .section-num {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-600);
+        font-weight: 500;
+    }
+
+    .overview-h2 {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0;
+    }
+
+    .overview-lead {
+        font-size: var(--text-base);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1.5rem;
+        max-width: 560px;
+    }
+
+    .overview-text {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1rem;
+    }
+
+    .overview-text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    .overview-text strong {
+        color: var(--green-50);
+    }
+
+    .overview-text em {
+        color: var(--text-dim);
+    }
+
+    .subsection-title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 1.5rem 0 0.75rem;
+    }
+
+    /* ── Info Cards ── */
+    .info-card {
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.875rem 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+
+    .info-card--tip {
+        border-color: rgba(34, 197, 94, 0.2);
+        background: rgba(34, 197, 94, 0.03);
+    }
+
+    .info-card--tip .info-card__icon {
+        color: var(--green-400);
+    }
+
+    .info-card--warn {
+        border-color: rgba(234, 179, 8, 0.25);
+        background: rgba(234, 179, 8, 0.04);
+    }
+
+    .info-card--warn .info-card__icon {
+        color: #eab308;
+    }
+
+    .info-card__icon {
+        flex-shrink: 0;
+        color: var(--green-400);
+        margin-top: 0.1rem;
+    }
+
+    .info-card__icon svg {
+        width: 16px;
+        height: 16px;
+        display: block;
+    }
+
+    .info-card__text strong {
+        color: var(--green-50);
+        font-weight: 600;
+    }
+
+    .info-card__text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    /* ── Compare Grid ── */
+    .compare-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+    }
+
+    .compare-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+    }
+
+    .compare-card__header {
+        margin-bottom: 0.75rem;
+    }
+
+    .compare-card__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+    }
+
+    .compare-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-top: 0.1rem;
+    }
+
+    .compare-card__body ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .compare-card__body li {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        padding-left: 1rem;
+        position: relative;
+    }
+
+    .compare-card__body li::before {
+        content: "—";
+        position: absolute;
+        left: 0;
+        color: var(--text-dim);
+    }
+
+    .compare-card--dac {
+        border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .compare-card--mac {
+        border-color: rgba(34, 197, 94, 0.15);
+        background: rgba(34, 197, 94, 0.02);
+    }
+
+    .compare-card--selinux {
+        border-color: rgba(34, 197, 94, 0.15);
+        background: rgba(34, 197, 94, 0.02);
+    }
+
+    .compare-card--apparmor {
+        border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    /* ── Modes Grid ── */
+    .modes-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+    }
+
+    .mode-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1rem;
+    }
+
+    .mode-card--green {
+        border-color: rgba(34, 197, 94, 0.2);
+        background: rgba(34, 197, 94, 0.03);
+    }
+
+    .mode-card--yellow {
+        border-color: rgba(234, 179, 8, 0.2);
+        background: rgba(234, 179, 8, 0.02);
+    }
+
+    .mode-card--red {
+        border-color: rgba(239, 68, 68, 0.15);
+        background: rgba(239, 68, 68, 0.02);
+    }
+
+    .mode-card__header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .mode-card__dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .mode-card--green .mode-card__dot {
+        background: var(--green-400);
+    }
+
+    .mode-card--yellow .mode-card__dot {
+        background: #eab308;
+    }
+
+    .mode-card--red .mode-card__dot {
+        background: #ef4444;
+    }
+
+    .mode-card__name {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-50);
+    }
+
+    .mode-card__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+    }
+
+    .mode-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    /* ── Boolean List ── */
+    .boolean-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .boolean-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.85rem 1rem;
+        transition: background 0.2s;
+    }
+
+    .boolean-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .boolean-card__name code {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+
+    .boolean-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin-top: 0.25rem;
+    }
+
+    .boolean-card__impact {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        margin-top: 0.35rem;
+    }
+
+    .boolean-card__impact svg {
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+        color: var(--green-500);
+    }
+
+    /* ── Context Grid ── */
+    .context-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .context-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.85rem 1rem;
+        transition: background 0.2s;
+    }
+
+    .context-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .context-card__ctx code {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+
+    .context-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.5;
+        margin-top: 0.25rem;
+    }
+
+    .context-card__example {
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        margin-top: 0.35rem;
+    }
+
+    .context-card__example-label {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-right: 0.35rem;
+    }
+
+    .context-card__example code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.2rem;
+    }
+
+    /* ── Code Block ── */
+    .code-block {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    .code-block__header {
+        display: flex;
+        align-items: center;
+        padding: 0.45rem 0.85rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .code-block__file {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+    }
+
+    .code-block pre {
+        margin: 0;
+        padding: 0.85rem;
+        overflow-x: auto;
+    }
+
+    .code-block code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-muted);
+        line-height: 1.55;
+    }
+
+    /* ── Terminal ── */
+    .terminal-block {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        margin-bottom: 1.5rem;
+    }
+
+    .terminal-block__bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+
+    .terminal-block__dots {
+        display: flex;
+        gap: 0.3rem;
+    }
+
+    .terminal-block__dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+        display: block;
+    }
+
+    .terminal-block__title {
+        color: var(--text-dim);
+        font-size: var(--text-2xs);
+        margin-left: auto;
+        margin-right: auto;
+        padding-right: 2.5rem;
+    }
+
+    .terminal-block__body {
+        padding: 0.65rem 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+
+    .t-line {
+        line-height: 1.5;
+    }
+
+    .t-line--spacer {
+        height: 0.35rem;
+    }
+
+    .t-prompt {
+        color: var(--green-600);
+        margin-right: 0.3rem;
+    }
+
+    .t-cmd {
+        color: var(--green-300);
+    }
+
+    .t-out {
+        color: var(--text-dim);
+        padding-left: 1.1rem;
+    }
+
+    .t-ok {
+        color: var(--green-400);
+    }
+
+    .t-comment {
+        color: rgba(255, 255, 255, 0.25);
+        font-style: italic;
+        padding-left: 0;
+    }
+
+    /* ── Troubleshooting ── */
+    .ts-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .ts-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.85rem 1rem;
+        transition: background 0.2s;
+    }
+
+    .ts-card:hover {
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .ts-card__symptom {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.4rem;
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-50);
+        line-height: 1.45;
+        margin-bottom: 0.35rem;
+    }
+
+    .ts-card__symptom svg {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+        margin-top: 0.15rem;
+        color: var(--green-500);
+    }
+
+    .ts-card__cause {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.45;
+    }
+
+    .ts-card__fix {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.45;
+    }
+
+    .ts-card__fix code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    .ts-card__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-dim);
+        margin-right: 0.25rem;
+    }
+
+    /* ── CTA ── */
+    .cta-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+    }
+
+    .cta-card__content {
+        flex: 1;
+    }
+
+    .cta-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0 0 0.25rem;
+    }
+
+    .cta-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0;
+    }
+
+    .cta-card__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--green-50);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.6rem 1rem;
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.2s, border-color 0.2s;
+    }
+
+    .cta-card__btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--border-hover);
+    }
+
+    .cta-card__btn svg {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 700px) {
+        .compare-grid,
+        .modes-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .cta-card {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>

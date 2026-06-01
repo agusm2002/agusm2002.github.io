@@ -1,0 +1,165 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+
+const simulationSteps = [
+    { step: "1", title: "Forzar crash de un pod", cmd: "kubectl delete pod grafana-7d4f5b6d8-xk2p -n aiops --force --grace-period=0", desc: "Elimina un pod forzosamente. Kubernetes intenta recrearlo, pero durante unos segundos el servicio esta caido. Prometheus detecta que el target /metrics de Grafana no responde." },
+    { step: "2", title: "Prometheus dispara la alerta", desc: "La regla ServiceDown (up == 0) se activa despues de 2 minutos con el target caido. Prometheus evalua las reglas cada 15 segundos — la alerta pasa a estado 'firing'.", time: "~2 min" },
+    { step: "3", title: "Alertmanager enruta a n8n", desc: "Alertmanager recibe la alerta de Prometheus, la agrupa con otras alertas del mismo severity (10s group_wait) y envia un webhook POST a n8n con el payload JSON de la alerta.", time: "+10s" },
+    { step: "4", title: "n8n extrae el contexto", desc: "El nodo Webhook recibe el POST. El nodo Set extrae: alertname=ServiceDown, severity=critical, job=grafana, description. Prepara las variables para el prompt del LLM.", time: "+2s" },
+    { step: "5", title: "LLM analiza la alerta", desc: "El nodo HTTP Request envia el prompt a OpenCode Go API. El LLM responde con: causa probable (pod eliminado, crash, OOM), impacto (Grafana no disponible), comandos sugeridos (kubectl describe pod, kubectl logs), y acciones preventivas (aumentar replicas, HPA).", time: "+5s" },
+    { step: "6", title: "Discord recibe el analisis", desc: "El nodo HTTP Request envia un embed a Discord con: titulo (nombre de la alerta + severity), descripcion (analisis del LLM en Markdown), color (rojo para firing), timestamp y campos adicionales.", time: "+1s" },
+    { step: "7", title: "Grafana muestra el timeline", desc: "El dashboard de Grafana muestra el spike de alertas en el panel de Service Status, el gap en las metricas del pod eliminado (2-3s hasta que k3s lo recrea), y el log del evento en el panel de Loki.", time: "visible" },
+];
+
+const videoStructure = [
+    { segment: "00:00-00:30", content: "Intro: arquitectura del stack en pantalla. Mencion de los componentes: Prometheus, Alertmanager, n8n, OpenCode Go, Discord, Grafana." },
+    { segment: "00:30-01:00", content: "Terminal: kubectl delete pod --force. Mostrar el pod siendo eliminado y el nuevo pod en estado ContainerCreating." },
+    { segment: "01:00-01:30", content: "Discord: el mensaje del LLM aparece en tiempo real. Leer el analisis en voz alta — causa probable, comandos sugeridos, prioridad." },
+    { segment: "01:30-02:00", content: "Grafana: mostrar el dashboard con el spike de alertas. Panel de Service Status con Grafana en rojo. Timeline de Loki con el evento." },
+    { segment: "02:00-03:00", content: "n8n UI: mostrar la ejecucion del workflow. Resaltar cada nodo mientras se explica su funcion. Mostrar el payload de entrada y el output del LLM." },
+    { segment: "03:00-03:30", content: "Cuando la alerta se resuelve: mostrar el mensaje de Discord con status 'resolved' en verde. Cierre del incidente documentado." },
+    { segment: "03:30-04:00", content: "Outro: recapitulacion del loop completo. Mencion de que esto corre en k3s sobre Rocky Linux con SELinux enforcing." },
+];
+---
+
+<DocsLayout
+    title="Incident Simulation - ITOps Automation Lab"
+    description="Fase 5 del Rocky Linux ITOps Automation Lab: simulacion de incidente end-to-end — crash de pod → alerta Prometheus → n8n → LLM → Discord. La demo grabada del proyecto."
+    activePage="workflow-3-incident-simulation"
+    prev={{ label: "Workflow 2: Log Analysis", href: "/aiops-lab/phase-5/workflow-2-log-analysis" }}
+    next={{ label: "Jenkins on Kubernetes", href: "/aiops-lab/phase-6/jenkins-on-k8s" }}
+>
+    <div class="docs-page">
+        <div class="f5-hero"><div class="f5-hero__top"><div class="f5-hero__badge">Fase 5.3</div><span class="f5-hero__time">Demo Grabada</span></div><h1 class="f5-hero__title">Incident Simulation<span class="f5-hero__accent"> · La Demo</span></h1><p class="f5-hero__subtitle">El momento mas importante del proyecto: forzar un crash de pod y ver el loop completo funcionando en tiempo real. Prometheus detecta, Alertmanager notifica, n8n procesa con LLM y Discord recibe el analisis. Esta secuencia grabada es lo que va en el README.</p></div>
+
+        <video class="demo-video demo-video--hero" src="/video/n8n/health-check-cron.mp4" autoplay muted loop playsinline controls></video>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">El Guion — Paso a Paso</h2></div>
+            <p class="overview-lead">Siete pasos desde que se fuerza el crash hasta que Discord recibe el analisis del LLM. El tiempo total es de aproximadamente 2 minutos y 20 segundos.</p>
+            <div class="sim-list">
+                {simulationSteps.map((s) => (
+                    <div class="sim-card">
+                        <div class="sim-card__left"><div class="sim-card__step">{s.step}</div></div>
+                        <div class="sim-card__body">
+                            <div class="sim-card__header">
+                                <span class="sim-card__title">{s.title}</span>
+                                {s.time && <span class="sim-card__time">{s.time}</span>}
+                            </div>
+                            <div class="sim-card__desc">{s.desc}</div>
+                            {s.cmd && <div class="sim-card__cmd"><code>{s.cmd}</code></div>}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">El Comando</h2></div>
+            <p class="overview-lead">Un solo comando dispara toda la secuencia. El flag <code>--force --grace-period=0</code> hace que el pod se elimine inmediatamente sin waiting period.</p>
+            <div class="terminal-block"><div class="terminal-block__bar"><div class="terminal-block__dots"><span></span><span></span><span></span></div><span class="terminal-block__title">incident simulation</span></div><div class="terminal-block__body">
+                <div class="t-line"><span class="t-comment"># 1. Forzar el crash del pod de Grafana</span></div>
+                <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">kubectl delete pod -l app=grafana -n aiops --force --grace-period=0</span></div>
+                <div class="t-line"><span class="t-out">pod "grafana-7d4f5b6d8-xk2p" force deleted</span></div>
+                <div class="t-line t-line--spacer"></div>
+                <div class="t-line"><span class="t-comment"># 2. Monitorear los pods mientras k3s recrea el eliminado</span></div>
+                <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">kubectl get pods -n aiops -w</span></div>
+                <div class="t-line"><span class="t-out">grafana-7d4f5b6d8-xk2p   Terminating   0          5m</span></div>
+                <div class="t-line"><span class="t-out">grafana-7d4f5b6d8-9mz3   ContainerCreating   0   1s</span></div>
+                <div class="t-line"><span class="t-out">grafana-7d4f5b6d8-9mz3   Running   0   3s</span></div>
+                <div class="t-line t-line--spacer"></div>
+                <div class="t-line"><span class="t-comment"># 3. Esperar ~2 min. Discord recibe el mensaje del LLM.</span></div>
+            </div></div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">Estructura del Video</h2></div>
+            <p class="overview-lead">El video de la demo tiene una duracion objetivo de 4 minutos. Cada segmento muestra una parte del stack en accion.</p>
+            <div class="vid-list">
+                {videoStructure.map((v) => (
+                    <div class="vid-row">
+                        <code class="vid-row__time">{v.segment}</code>
+                        <div class="vid-row__content">{v.content}</div>
+                    </div>
+                ))}
+            </div>
+            <div class="info-card info-card--tip"><div class="info-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="info-card__text"><strong>Consejo para el video:</strong> grabar la pantalla completa con OBS. Tener 4 ventanas abiertas: terminal, Discord, Grafana y n8n UI. Cambiar entre ellas en cada segmento. Voz en off explicando lo que se ve. Sin musica — solo la voz y los comandos.</div></div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">04</span><h2 class="overview-h2">Lo Que se Demuestra</h2></div>
+            <p class="overview-lead">La simulacion de incidente demuestra mas que skills tecnicos. Demuestra un sistema integrado donde multiples componentes trabajan juntos sin intervencion humana.</p>
+            <div class="demo-grid">
+                <div class="demo-card"><div class="demo-card__num">1</div><div class="demo-card__text">Automatizacion real, no un script que imprime logs. El loop usa protocolos estandar (webhooks, HTTP, PromQL) entre componentes heterogeneos.</div></div>
+                <div class="demo-card"><div class="demo-card__num">2</div><div class="demo-card__text">Integracion con IA. No es un chatbot — es un LLM analizando datos operativos reales y generando recomendaciones accionables.</div></div>
+                <div class="demo-card"><div class="demo-card__num">3</div><div class="demo-card__text">Observabilidad completa: metricas (Prometheus), logs (Loki), dashboards (Grafana) y alertas (Alertmanager) trabajando en conjunto.</div></div>
+                <div class="demo-card"><div class="demo-card__num">4</div><div class="demo-card__text">Todo self-hosted en k3s sobre Rocky Linux. Nada de servicios cloud administrados — cada pieza se configuro desde cero.</div></div>
+            </div>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Fase 5 Completada</h3><p class="cta-card__desc">Los workflows de n8n con LLM estan funcionando. La Fase 6 introduce Jenkins self-hosted en k3s con agentes dinamicos y pipeline CI/CD.</p></div><a href="/aiops-lab/phase-6/jenkins-on-k8s" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Fase 6</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f5-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f5-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f5-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f5-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f5-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f5-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f5-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .sim-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .sim-card { display: flex; gap: 0.75rem; padding: 0.7rem 0.85rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; }
+    .sim-card__left { flex-shrink: 0; }
+    .sim-card__step { display: flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 700; color: var(--green-400); }
+    .sim-card__body { flex: 1; min-width: 0; }
+    .sim-card__header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; }
+    .sim-card__title { font-weight: 600; font-size: var(--text-sm); color: var(--green-50); }
+    .sim-card__time { font-family: var(--font-mono); font-size: var(--text-4xs); color: var(--text-dim); margin-left: auto; }
+    .sim-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+    .sim-card__cmd { margin-top: 0.35rem; }
+    .sim-card__cmd code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); background: rgba(255,255,255,0.04); padding: 0.15rem 0.4rem; border-radius: 0.25rem; border: 1px solid var(--border); }
+    .terminal-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; font-family: var(--font-mono); font-size: var(--text-xs); margin-bottom: 1.5rem; }
+    .terminal-block__bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .terminal-block__dots { display: flex; gap: 0.3rem; }
+    .terminal-block__dots span { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); display: block; }
+    .terminal-block__title { color: var(--text-dim); font-size: var(--text-2xs); margin-left: auto; margin-right: auto; padding-right: 2.5rem; }
+    .terminal-block__body { padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 0.1rem; }
+    .t-line { line-height: 1.5; } .t-line--spacer { height: 0.35rem; }
+    .t-prompt { color: var(--green-600); margin-right: 0.3rem; }
+    .t-cmd { color: var(--green-300); }
+    .t-out { color: var(--text-dim); padding-left: 0; }
+    .t-comment { color: rgba(255,255,255,0.25); font-style: italic; }
+    .vid-list { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; }
+    .demo-video { width: 100%; aspect-ratio: 16/10; border-radius: 0.75rem; border: 1px solid var(--border); background: #0a0a0a; }
+    .vid-row { display: flex; gap: 0.65rem; padding: 0.5rem 0.8rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; font-size: var(--text-sm); }
+    .vid-row__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-400); min-width: 80px; background: none; padding: 0.1rem 0 0; }
+    .vid-row__content { color: var(--text-muted); line-height: 1.45; }
+    .info-card { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+    .info-card--tip { border-color: rgba(34,197,94,0.2); background: rgba(34,197,94,0.03); }
+    .info-card--tip .info-card__icon { color: var(--green-400); }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .demo-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 0.4rem; }
+    .demo-card { display: flex; gap: 0.5rem; padding: 0.65rem 0.8rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; font-size: var(--text-sm); }
+    .demo-card__num { display: flex; align-items: center; justify-content: center; width: 1.35rem; height: 1.35rem; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--green-400); flex-shrink: 0; }
+    .demo-card__text { color: var(--text-muted); line-height: 1.45; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 700px) { .demo-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

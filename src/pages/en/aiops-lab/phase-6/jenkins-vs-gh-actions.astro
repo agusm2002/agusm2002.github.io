@@ -1,0 +1,102 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+const comparisons = [
+    { aspect: "Hosting", jenkins: "Self-hosted. El equipo gestiona el servidor, los plugins, las actualizaciones y la disponibilidad.", actions: "Managed por GitHub. Cero mantenimiento de infraestructura. GitHub gestiona todo.", winner: "actions" },
+    { aspect: "Configuracion", jenkins: "Jenkinsfile en el repo + configuracion via UI (plugins, credenciales, agentes). Curva de aprendizaje mas alta.", actions: "YAML en .github/workflows/. Todo por codigo. Sin UI que configurar. Mas simple para empezar.", winner: "actions" },
+    { aspect: "Runners", jenkins: "Agentes como pods efimeros en k3s. Control total sobre la imagen y el entorno de build.", actions: "Runners managed por GitHub (ubuntu-latest) o self-hosted runners. Managed = sin control del SO.", winner: "jenkins" },
+    { aspect: "Integracion", jenkins: "Webhook de GitHub → Jenkins. El pipeline se dispara en cada push. Requiere exponer Jenkins a internet o usar un webhook relay.", actions: "Nativo. El push en GitHub dispara el workflow automaticamente. Cero configuracion de red.", winner: "actions" },
+    { aspect: "Plugins", jenkins: "+1800 plugins. Cualquier tool, cualquier integracion. Pero actualizar plugins es responsabilidad del equipo.", actions: "Actions del marketplace + acciones custom. Mas limitado que Jenkins pero suficiente para el 90% de los casos.", winner: "draw" },
+    { aspect: "Metricas", jenkins: "Prometheus Metrics plugin → Prometheus → Grafana. Dashboards de builds, tasas de exito, agentes activos.", actions: "GitHub proporciona analytics basicos. Para metricas detalladas se necesitan tools externas.", winner: "jenkins" },
+    { aspect: "Costo", jenkins: "Costo de infraestructura (VM, storage). El software es gratis. A mayor escala, menor costo por build.", actions: "Gratis para repos publicos. Minutos limitados para repos privados. A escala enterprise, el costo puede ser significativo.", winner: "draw" },
+];
+
+const interviewPoints = [
+    "El Proyecto 1 usa GitHub Actions. Este proyecto usa Jenkins self-hosted en k3s. Cubrir ambos demuestra que se entienden los dos ecosistemas y se elige segun el contexto.",
+    "Jenkins es el estandar en empresas con infraestructura on-premise (banca, gobierno, healthcare). GitHub Actions es el estandar en empresas cloud-native.",
+    "La diferencia clave no es tecnica — es operacional. Con Jenkins, el equipo es responsable del servidor. Con Actions, GitHub es responsable. Saber gestionar ambos es un diferenciador.",
+    "El pipeline de este proyecto no solo hace linting — integra con n8n para notificar fallos. Si un stage falla, n8n procesa el evento con LLM. Esto va mas alla de un pipeline CI/CD basico.",
+];
+---
+
+<DocsLayout
+    title="Jenkins vs GitHub Actions - ITOps Automation Lab"
+    description="Phase 6 del Rocky Linux ITOps Automation Lab: comparacion entre Jenkins self-hosted y GitHub Actions — dos enfoques de CI/CD que el portfolio cubre deliberadamente."
+    activePage="jenkins-vs-gh-actions"
+    lang="en"
+    prev={{ label: "Pipeline Setup", href: "/en/aiops-lab/phase-6/pipeline-setup" }}
+    next={{ label: "ArgoCD Overview", href: "/en/aiops-lab/phase-7/argocd-overview" }}
+>
+    <div class="docs-page">
+        <div class="f6-hero"><div class="f6-hero__top"><div class="f6-hero__badge">Phase 6.3</div><span class="f6-hero__time">Jenkins vs Actions</span></div><h1 class="f6-hero__title">Jenkins vs GitHub Actions<span class="f6-hero__accent"> · Dos Enfoques</span></h1><p class="f6-hero__subtitle">No se trata de cual es mejor. Se trata de entender en que contexto se usa cada uno. Empresas cloud-native usan GitHub Actions. Empresas con infraestructura on-premise usan Jenkins. El portfolio cubre ambos porque el mercado laboral valora ambos.</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">Comparacion Directa</h2></div>
+            <p class="overview-lead">Siete dimensiones donde los dos enfoques de CI/CD toman decisiones distintas. Ninguno gana en todas — cada uno brilla en su contexto.</p>
+            <div class="cmp-list">
+                {comparisons.map((c) => (
+                    <div class="cmp-row">
+                        <div class="cmp-row__aspect">{c.aspect}</div>
+                        <div class="cmp-row__cols">
+                            <div class="cmp-col"><span class="cmp-col__label">Jenkins</span><span class="cmp-col__text">{c.jenkins}</span></div>
+                            <div class="cmp-col"><span class="cmp-col__label">GitHub Actions</span><span class="cmp-col__text">{c.actions}</span></div>
+                        </div>
+                        <span class={`cmp-row__winner cmp-row__winner--${c.winner}`}>{c.winner === 'jenkins' ? 'Jenkins' : c.winner === 'actions' ? 'Actions' : 'Empate'}</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">Por Que el Portfolio Cubre Ambos</h2></div>
+            <p class="overview-lead">La decision de usar Jenkins en este proyecto no es tecnica — es estrategica. Tener un proyecto con Actions y otro con Jenkins demuestra que se entiende el panorama completo de CI/CD.</p>
+            <div class="points-list">
+                {interviewPoints.map((p, i) => (
+                    <div class="point-row"><div class="point-row__num">{i + 1}</div><div class="point-row__text">{p}</div></div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Phase 6 Completada</h3><p class="cta-card__desc">Con CI/CD funcionando, la Phase 7 introduce GitOps with ArgoCD: desired state, auto-sync y drift detection desde el repositorio de Git.</p></div><a href="/en/aiops-lab/phase-7/argocd-overview" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Phase 7 · ArgoCD</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f6-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f6-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f6-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f6-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f6-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f6-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f6-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .cmp-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .cmp-row { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.75rem 0.9rem; }
+    .cmp-row__aspect { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+    .cmp-row__cols { display: grid; grid-template-columns: repeat(2,1fr); gap: 0.5rem; margin-bottom: 0.35rem; }
+    .cmp-col__label { font-family: var(--font-mono); font-size: var(--text-3xs); color: var(--green-500); display: block; margin-bottom: 0.15rem; }
+    .cmp-col__text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+    .cmp-row__winner { font-family: var(--font-mono); font-size: var(--text-4xs); padding: 0.1rem 0.3rem; border-radius: 0.2rem; border: 1px solid; display: inline-block; }
+    .cmp-row__winner--jenkins { color: var(--green-400); border-color: rgba(34,197,94,0.2); background: rgba(34,197,94,0.06); }
+    .cmp-row__winner--actions { color: #3b82f6; border-color: rgba(59,130,246,0.2); background: rgba(59,130,246,0.06); }
+    .cmp-row__winner--draw { color: var(--text-dim); border-color: rgba(255,255,255,0.08); background: rgba(255,255,255,0.03); }
+    .points-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .point-row { display: flex; gap: 0.6rem; padding: 0.6rem 0.85rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; font-size: var(--text-sm); }
+    .point-row__num { display: flex; align-items: center; justify-content: center; width: 1.35rem; height: 1.35rem; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--green-400); flex-shrink: 0; }
+    .point-row__text { color: var(--text-muted); line-height: 1.5; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 700px) { .cmp-row__cols { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

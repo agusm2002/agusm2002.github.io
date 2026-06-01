@@ -1,0 +1,79 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+const slos = [
+    { slo: "Disponibilidad Grafana", obj: "99.9%", budget: "43.8 min/mes", desc: "Grafana debe responder al menos el 99.9% del tiempo. Con 43.8 minutos de downtime permitido por mes, hay margen para reinicios planificados y deploys." },
+    { slo: "Latencia n8n p95", obj: "< 2 segundos", budget: "N/A (umbral)", desc: "El percentil 95 de latencia de n8n debe ser menor a 2 segundos. Si el p95 supera este umbral, la respuesta a incidentes se degrada." },
+    { slo: "Procesamiento de alertas", obj: "95% exito", budget: "5% fallos", desc: "Al menos el 95% de las alertas enviadas por Alertmanager deben ser procesadas exitosamente por los workflows de n8n." },
+];
+const ebConcept = "Error budget = 100% - SLO. Si el SLO es 99.9%, el error budget es 0.1% del mes (~43 minutos). Cuando el error budget se agota, se detienen los deploys y se prioriza la estabilidad sobre nuevas features.";
+---
+
+<DocsLayout title="SLO Objectives - ITOps Automation Lab" activePage="slo-objectives"
+    lang="en"
+    prev={{ label: "SLI Definitions", href: "/en/aiops-lab/phase-10/sli-definitions" }}
+    next={{ label: "Grafana SLO Dashboard", href: "/en/aiops-lab/phase-10/grafana-slo-dashboard" }}
+>
+    <div class="docs-page">
+        <div class="h"><div class="h__top"><div class="h__badge">Phase 10.1</div><span class="h__time">SLOs</span></div><h1 class="h__title">SLO Objectives<span class="h__accent"> · Error Budgets</span></h1><p class="h__sub">Tres Service Level Objectives definen los objetivos de confiabilidad del sistema. Cada SLO tiene un error budget asociado — el tiempo de downtime permitido antes de que se dispare una alerta.</p></div>
+
+        <div class="sec">
+            <div class="sec__h"><span class="sec__num">01</span><h2 class="sec__h2">Los SLOs</h2></div>
+            <div class="slo-list">
+                {slos.map((s) => (
+                    <div class="slo">
+                        <div class="slo__hdr"><span class="slo__name">{s.slo}</span><code class="slo__obj">{s.obj}</code></div>
+                        <div class="slo__budget">Error budget: <b>{s.budget}</b></div>
+                        <div class="slo__desc">{s.desc}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <div class="sec">
+            <div class="sec__h"><span class="sec__num">02</span><h2 class="sec__h2">Error Budget</h2></div>
+            <p class="sec__lead">{ebConcept}</p>
+            <div class="info info--tip"><div class="info__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="info__text"><b>Argumento de entrevista:</b> "No es produccion real, pero demuestra que pienso en confiabilidad como un SRE. Defini SLIs, estableci SLOs con error budgets, y los monitoreo en Grafana."</div></div>
+        </div>
+
+        <div class="sec sec--cta">
+            <div class="cta"><div class="cta__content"><h3 class="cta__title">Siguiente: Grafana SLO Dashboard</h3><p class="cta__desc">Como se visualizan los SLOs y error budgets en Grafana.</p></div><a href="/en/aiops-lab/phase-10/grafana-slo-dashboard" class="cta__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Dashboard</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style>
+    .docs-page { max-width: 740px; }
+    .h { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .h__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .h__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .h__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .h__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .h__accent { color: var(--green-500); font-weight: 500; }
+    .h__sub { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .sec { margin-bottom: 3rem; }
+    .sec--cta { margin-top: 1rem; }
+    .sec__h { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .sec__num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .sec__h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .sec__lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .slo-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .slo { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.8rem 0.9rem; }
+    .slo__hdr { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; }
+    .slo__name { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); }
+    .slo__obj { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); background: rgba(255,255,255,0.04); padding: 0.1rem 0.35rem; border-radius: 0.2rem; border: 1px solid var(--border); }
+    .slo__budget { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); margin-bottom: 0.3rem; }
+    .slo__budget b { color: var(--green-300); }
+    .slo__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+    .info { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; }
+    .info--tip { border-color: rgba(34,197,94,0.2); background: rgba(34,197,94,0.03); }
+    .info__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info__icon svg { width: 16px; height: 16px; display: block; }
+    .info__text b { color: var(--green-50); font-weight: 600; }
+    .cta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta__content { flex: 1; }
+    .cta__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 600px) { .cta { flex-direction: column; align-items: flex-start; } }
+</style>

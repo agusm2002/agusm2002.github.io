@@ -1,0 +1,165 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+
+export function getStaticPaths() {
+    const pages = [
+        { slug: "getting-started/prerequisites", title: "Prerequisites" },
+        { slug: "getting-started/quick-start", title: "Quick Start" },
+        { slug: "phase-1/base-setup", title: "Base Setup" },
+        { slug: "phase-1/selinux", title: "SELinux Configuration" },
+        { slug: "phase-1/firewalld", title: "Firewalld & Network Security" },
+        { slug: "phase-1/ssh-hardening", title: "SSH Hardening" },
+        { slug: "phase-1/rocky-vs-ubuntu", title: "Rocky Linux vs Ubuntu" },
+        { slug: "phase-2/opentofu-overview", title: "OpenTofu Overview" },
+        { slug: "phase-2/kubernetes-provider", title: "Kubernetes Provider" },
+        { slug: "phase-2/workflow", title: "Workflow (init → plan → apply)" },
+        {
+            slug: "phase-2/iac-vs-config",
+            title: "IaC vs Configuration Management",
+        },
+        { slug: "phase-3/vault-overview", title: "HashiCorp Vault Overview" },
+        { slug: "phase-3/vault-agent-injector", title: "Vault Agent Injector" },
+        { slug: "phase-3/kubernetes-auth", title: "Kubernetes Auth Method" },
+        {
+            slug: "phase-3/secret-injection-flow",
+            title: "Secret Injection Flow",
+        },
+        { slug: "phase-3/dev-vs-prod", title: "Dev Mode vs Production" },
+        { slug: "phase-4/k3s-setup", title: "k3s Setup" },
+        {
+            slug: "phase-4/prometheus-alertmanager",
+            title: "Prometheus & Alertmanager",
+        },
+        { slug: "phase-4/loki-grafana-alloy", title: "Loki & Grafana Alloy" },
+        { slug: "phase-4/grafana-dashboards", title: "Grafana Dashboards" },
+        { slug: "phase-4/n8n-deployment", title: "n8n Deployment" },
+        { slug: "phase-5/opencode-go-api", title: "OpenCode Go API Setup" },
+        {
+            slug: "phase-5/workflow-1-incident-response",
+            title: "Workflow 1: Incident Response",
+        },
+        {
+            slug: "phase-5/workflow-2-log-analysis",
+            title: "Workflow 2: Log Analysis",
+        },
+        { slug: "phase-5/workflow-3-incident-simulation", title: "Workflow 3: Incident Simulation" },
+        { slug: "phase-6/jenkins-on-k8s", title: "Jenkins on Kubernetes" },
+        { slug: "phase-6/dynamic-agents", title: "Dynamic Agents" },
+        { slug: "phase-6/pipeline-setup", title: "Pipeline Setup" },
+        {
+            slug: "phase-6/jenkins-vs-gh-actions",
+            title: "Jenkins vs GitHub Actions",
+        },
+        { slug: "phase-7/argocd-overview", title: "ArgoCD Overview" },
+        { slug: "phase-7/app-of-apps", title: "App of Apps Pattern" },
+        { slug: "phase-7/drift-detection", title: "Drift Detection Demo" },
+        { slug: "phase-8/fail2ban", title: "Fail2Ban" },
+        { slug: "phase-8/hardening-checklist", title: "Hardening Checklist" },
+        { slug: "phase-9/architecture", title: "Architecture (Bastion + k3s)" },
+        { slug: "phase-9/opentofu-oci", title: "OpenTofu OCI Provider" },
+        {
+            slug: "phase-9/oci-vault-vs-hashicorp",
+            title: "OCI Vault vs HashiCorp Vault",
+        },
+        { slug: "phase-9/minio-to-oci", title: "MinIO → OCI Object Storage" },
+        { slug: "phase-9/lab-vs-prod", title: "Lab vs Production Comparison" },
+        { slug: "phase-10/sli-definitions", title: "SLI Definitions" },
+        {
+            slug: "phase-10/slo-objectives",
+            title: "SLO Objectives & Error Budgets",
+        },
+        {
+            slug: "phase-10/grafana-slo-dashboard",
+            title: "Grafana SLO Dashboard",
+        },
+        { slug: "reference/lessons-learned", title: "Lessons Learned" },
+        { slug: "reference/resources-links", title: "Resources & Links" },
+    ];
+
+    return pages.map((p, i) => ({
+        params: { slug: p.slug },
+        props: {
+            title: p.title,
+            prev:
+                i === 0
+                    ? { label: "Overview", href: `/en/aiops-lab/` }
+                    : {
+                          label: pages[i - 1].title,
+                          href: `/en/aiops-lab/${pages[i - 1].slug}`,
+                      },
+            next:
+                i < pages.length - 1
+                    ? {
+                          label: pages[i + 1].title,
+                          href: `/en/aiops-lab/${pages[i + 1].slug}`,
+                      }
+                    : undefined,
+        },
+    }));
+}
+
+const { title, prev, next } = Astro.props;
+---
+
+<DocsLayout
+    title={`${title} - ITOps Automation Lab`}
+    description={title}
+    lang="en"
+    prev={prev}
+    next={next}
+>
+    <div class="docs-page">
+        <h1 class="docs-title">{title}</h1>
+        <p class="docs-lead">Coming soon.</p>
+
+        <div class="docs-section">
+            <h2 class="docs-heading">Under development</h2>
+            <p class="docs-text">
+                This section is being built. Check the project plan for more
+                details.
+            </p>
+        </div>
+    </div>
+</DocsLayout>
+
+<style>
+    .docs-page {
+        max-width: 680px;
+    }
+
+    .docs-title {
+        font-family: var(--font-display);
+        font-size: clamp(1.8rem, 3vw, 2.4rem);
+        font-weight: 700;
+        color: var(--green-50);
+        margin-bottom: 0.5rem;
+        line-height: 1.1;
+    }
+
+    .docs-lead {
+        font-size: var(--text-md);
+        color: var(--text-muted);
+        line-height: 1.7;
+        margin-bottom: 2.5rem;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .docs-section {
+        margin-bottom: 2rem;
+    }
+
+    .docs-heading {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: 600;
+        color: var(--green-50);
+        margin-bottom: 0.75rem;
+    }
+
+    .docs-text {
+        font-size: var(--text-base);
+        color: var(--text-muted);
+        line-height: 1.7;
+    }
+</style>

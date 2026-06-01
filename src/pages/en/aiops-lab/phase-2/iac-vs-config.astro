@@ -1,0 +1,704 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+const dimensions = [
+    {
+        aspect: "Philosophy",
+        iac: "Declarative: the desired state is defined. The tool reconciles reality against that definition.",
+        cfg: "Procedural: steps are defined to reach a state. The tool executes tasks in order.",
+        iacStyle: "What I want to exist.",
+        cfgStyle: "How to get to what I want.",
+    },
+    {
+        aspect: "Idempotency",
+        iac: "Native. If the resource already exists with the same properties, the plan shows 0 changes. If it was manually deleted, it is recreated.",
+        cfg: "Depends on the module. Modules like lineinfile, systemd, or seboolean are idempotent. Modules like command or shell are not without changed_when.",
+        iacStyle: "Guaranteed by design.",
+        cfgStyle: "Depends on the author's discipline.",
+    },
+    {
+        aspect: "State",
+        iac: "Persistent state file (terraform.tfstate). OpenTofu knows which resources it created, their IDs and metadata. The state is the source of truth.",
+        cfg: "No persistent state. Ansible queries the real state of the system on each run via inspection modules (stat, find, shell).",
+        iacStyle: "State file = system memory.",
+        cfgStyle: "Each run = fresh discovery of state.",
+    },
+    {
+        aspect: "Execution order",
+        iac: "OpenTofu builds a DAG (directed acyclic graph) from references between resources. It runs in parallel what it can and serializes what has dependencies.",
+        cfg: "Explicit order defined by the author. Plays, roles, and tasks run sequentially in the declared order. Handlers at the end.",
+        iacStyle: "Automatic: Tofu resolves the order.",
+        cfgStyle: "Manual: the author defines the order.",
+    },
+    {
+        aspect: "Drift Detection",
+        iac: "tofu plan compares the state against the real state. Detects manual changes, resources deleted outside Tofu, and property divergences.",
+        cfg: "Has no drift concept. Every run reapplies the tasks. If something was changed manually, Ansible corrects it (or not, depending on the task).",
+        iacStyle: "Detects and reports divergences.",
+        cfgStyle: "Corrects without asking (if the task allows it).",
+    },
+    {
+        aspect: "Destruction",
+        iac: "tofu destroy removes everything managed by this stack. Clean, deterministic, without leaving orphans.",
+        cfg: "There is no direct equivalent. To undo Ansible changes, you write another playbook or use tasks with state: absent.",
+        iacStyle: "One command = revert everything.",
+        cfgStyle: "Requires manual rollback planning.",
+    },
+];
+
+const practicalExamples = [
+    {
+        scenario: "Create a Kubernetes namespace",
+        iacCode: `resource "kubernetes_namespace" "aiops" {
+  metadata {
+    name = "aiops"
+  }
+}`,
+        iacNote: "",
+        cfgCode: `- name: Create aiops namespace
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: aiops`,
+        cfgNote: "",
+        whenIac: "When the namespace is part of the infrastructure — other resources depend on it. Tofu guarantees the creation order.",
+        whenCfg: "When the namespace is needed as a prerequisite for deploying workloads, but it is not a resource that Tofu should manage.",
+    },
+    {
+        scenario: "Configure SELinux",
+        iacCode: "",
+        iacNote: "OpenTofu does not have a native provider for managing SELinux. A community provider could be used, but it is not the right tool — OpenTofu does not configure operating systems. That is the boundary between IaC and Config Management.",
+        cfgCode: `- name: SELinux enforcing
+  ansible.builtin.selinux:
+    policy: targeted
+    state: enforcing`,
+        cfgNote: "",
+        whenIac: "Does not apply. OpenTofu does not configure operating systems.",
+        whenCfg: "Ansible is the natural tool for configuring SELinux. It is an OS configuration task, not infrastructure creation.",
+    },
+    {
+        scenario: "Open a port in firewalld",
+        iacCode: "",
+        iacNote: "OpenTofu does not manage operating system firewalls. For the cloud networking layer (OCI NSGs, AWS Security Groups), OpenTofu is the right tool. But firewalld is OS configuration — Ansible's domain.",
+        cfgCode: `- name: Open port for k3s API
+  ansible.posix.firewalld:
+    port: "6443/tcp"
+    zone: public
+    permanent: true
+    state: enabled`,
+        cfgNote: "",
+        whenIac: "In OCI, NSGs are managed with OpenTofu. On the OS, firewalld is managed with Ansible. Two tools, two distinct layers.",
+        whenCfg: "Ansible applies firewalld rules on each VM. If a new port is added, it goes in the list and the playbook is re-run.",
+    },
+];
+
+const antiPatterns = [
+    { bad: "Using Ansible to create VMs in OCI (with cloud modules)", why: "Ansible creates but does not track state. If the VM is deleted, Ansible does not know it existed. OpenTofu with a state file is the right tool for creating infrastructure." },
+    { bad: "Using OpenTofu provisioners to install packages", why: "Tofu provisioners (local-exec, remote-exec, file) are a last resort. They are not idempotent, they do not handle errors like Ansible, and they create coupling between infrastructure and configuration." },
+    { bad: "Duplicating resources between Ansible and OpenTofu", why: "If a resource is created with Tofu and also declared in Ansible, the two tools will compete to manage it. Each resource must have a single owner." },
+];
+---
+
+<DocsLayout
+    title="IaC vs Configuration Management - ITOps Automation Lab"
+    description="Phase 2 of the Rocky Linux ITOps Automation Lab: the conceptual difference between Infrastructure as Code (OpenTofu) and Configuration Management (Ansible), when to use each, and common anti-patterns."
+    activePage="iac-vs-config"
+    lang="en"
+    prev={{
+        label: "Workflow (init → plan → apply)",
+        href: "/en/aiops-lab/phase-2/workflow",
+    }}
+    next={{
+        label: "HashiCorp Vault Overview",
+        href: "/en/aiops-lab/phase-3/vault-overview",
+    }}
+>
+    <div class="docs-page">
+        <!-- ═══ Hero ═══ -->
+        <div class="f2-hero">
+            <div class="f2-hero__top">
+                <div class="f2-hero__badge">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    Phase 2.3
+                </div>
+                <span class="f2-hero__time">OpenTofu vs Ansible</span>
+            </div>
+
+            <h1 class="f2-hero__title">
+                IaC vs Config Management
+                <span class="f2-hero__accent">· Two Tools, Two Roles</span>
+            </h1>
+            <p class="f2-hero__subtitle">
+                OpenTofu and Ansible do not compete — they complement each other. Knowing which
+                tool to use for each task is one of the most important architecture decisions in
+                infrastructure. This page explains the conceptual difference, shows practical examples,
+                and warns about the most common anti-patterns.
+            </p>
+        </div>
+
+        <!-- ═══ The Core Difference ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">01</span>
+                <h2 class="overview-h2">The Core Difference</h2>
+            </div>
+            <p class="overview-lead">
+                The difference is not technical — it is philosophical. OpenTofu is
+                <strong>declarative</strong>: it describes the what. Ansible is
+                <strong>procedural</strong>: it describes the how. The same
+                result (namespace created) is reached through completely
+                different paths.
+            </p>
+
+            <div class="core-viz">
+                <div class="core-card core-card--tofu">
+                    <div class="core-card__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    </div>
+                    <div class="core-card__label">OpenTofu</div>
+                    <div class="core-card__approach">Declarative — THE WHAT</div>
+                    <div class="core-card__desc">"I want a namespace called aiops with these labels. Reconcile the real state to match it."</div>
+                </div>
+                <div class="core-divider">
+                    <span class="core-divider__vs">vs</span>
+                </div>
+                <div class="core-card core-card--ansible">
+                    <div class="core-card__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.5 8.5 15 12l-5.5 3.5"/></svg>
+                    </div>
+                    <div class="core-card__label">Ansible</div>
+                    <div class="core-card__approach">Procedural — THE HOW</div>
+                    <div class="core-card__desc">"Step 1: connect to the cluster. Step 2: check if the namespace exists. Step 3: if it doesn't, create it with these properties."</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ 6 Dimensions ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">02</span>
+                <h2 class="overview-h2">Six Dimensions of Comparison</h2>
+            </div>
+            <p class="overview-lead">
+                The differences between OpenTofu and Ansible show up in every
+                aspect of the infrastructure lifecycle. These six
+                dimensions cover the essentials.
+            </p>
+
+            <div class="dim-table">
+                {dimensions.map((d) => (
+                    <div class="dim-row">
+                        <div class="dim-row__aspect">{d.aspect}</div>
+                        <div class="dim-row__cols">
+                            <div class="dim-col dim-col--iac">
+                                <span class="dim-col__label">OpenTofu</span>
+                                <span class="dim-col__text">{d.iac}</span>
+                                <span class="dim-col__tag">{d.iacStyle}</span>
+                            </div>
+                            <div class="dim-col dim-col--cfg">
+                                <span class="dim-col__label">Ansible</span>
+                                <span class="dim-col__text">{d.cfg}</span>
+                                <span class="dim-col__tag">{d.cfgStyle}</span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <!-- ═══ Practical Examples ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">03</span>
+                <h2 class="overview-h2">Practical Examples</h2>
+            </div>
+            <p class="overview-lead">
+                Three concrete project scenarios where you can see the difference
+                between using OpenTofu and using Ansible. In each case, one is
+                the right tool and the other is not.
+            </p>
+
+            <div class="ex-list">
+                {practicalExamples.map((ex, i) => (
+                    <div class="ex-card">
+                        <div class="ex-card__header">
+                            <span class="ex-card__num">{i + 1}</span>
+                            <span class="ex-card__scenario">{ex.scenario}</span>
+                        </div>
+                        <div class="ex-card__cols">
+                            <div class="ex-col ex-col--iac">
+                                <div class="ex-col__tool">OpenTofu</div>
+                                {ex.iacCode ? (
+                                    <pre class="ex-col__code"><code>{ex.iacCode}</code></pre>
+                                ) : (
+                                    <div class="ex-col__note">{ex.iacNote}</div>
+                                )}
+                                <div class="ex-col__when">
+                                    <span class="ex-col__when-label">When to use:</span>
+                                    {ex.whenIac}
+                                </div>
+                            </div>
+                            <div class="ex-col ex-col--cfg">
+                                <div class="ex-col__tool">Ansible</div>
+                                {ex.cfgCode ? (
+                                    <pre class="ex-col__code"><code>{ex.cfgCode}</code></pre>
+                                ) : (
+                                    <div class="ex-col__note">{ex.cfgNote}</div>
+                                )}
+                                <div class="ex-col__when">
+                                    <span class="ex-col__when-label">When to use:</span>
+                                    {ex.whenCfg}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <!-- ═══ Division of Labor ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">04</span>
+                <h2 class="overview-h2">Division of Responsibilities</h2>
+            </div>
+            <p class="overview-lead">
+                In this project, the boundary between OpenTofu and Ansible is
+                clear: OpenTofu creates infrastructure, Ansible configures
+                operating systems. There is no overlap — each resource has
+                a single owner.
+            </p>
+
+            <div class="div-grid">
+                <div class="div-card div-card--tofu">
+                    <div class="div-card__title">OpenTofu manages:</div>
+                    <ul class="div-card__list">
+                        <li>Namespaces de Kubernetes</li>
+                        <li>ConfigMaps (Prometheus, Grafana)</li>
+                        <li>OCI VCN, subnets, NSGs</li>
+                        <li>OCI Compute Instances (VMs)</li>
+                        <li>OCI Vault y Object Storage</li>
+                        <li>OCI Internet Gateway</li>
+                    </ul>
+                </div>
+                <div class="div-card div-card--ansible">
+                    <div class="div-card__title">Ansible manages:</div>
+                    <ul class="div-card__list">
+                        <li>Paquetes del SO (dnf)</li>
+                        <li>SELinux (modo enforcing, booleanos)</li>
+                        <li>Firewalld (zonas, puertos)</li>
+                        <li>SSH (puerto, root login, password auth)</li>
+                        <li>fail2ban (jail SSH)</li>
+                        <li>dnf-automatic (actualizaciones de seguridad)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>The golden rule:</strong> if the resource has an ID
+                    in a cloud provider or in Kubernetes, it goes with OpenTofu. If
+                    it is a configuration file, a package, or an operating system
+                    service, it goes with Ansible. This boundary prevents
+                    the most common coupling in infrastructure projects.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Anti-patrones ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">05</span>
+                <h2 class="overview-h2">Common Anti-patterns</h2>
+            </div>
+            <p class="overview-lead">
+                Frequent mistakes when combining IaC and Configuration Management.
+                The project deliberately avoids them — it was designed with a
+                clear boundary from day 1.
+            </p>
+
+            <div class="ap-list">
+                {antiPatterns.map((ap) => (
+                    <div class="ap-card">
+                        <div class="ap-card__bad">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                            {ap.bad}
+                        </div>
+                        <div class="ap-card__why">
+                            <span class="ap-card__why-label">Why not:</span>
+                            {ap.why}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <!-- ═══ CTA ═══ -->
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card">
+                <div class="cta-card__content">
+                    <div class="cta-card__title">Phase 2 Complete</div>
+                    <p class="cta-card__desc">
+                        With IaC covered, Phase 3 introduces HashiCorp Vault:
+                        self-hosted secrets management in k3s, Vault Agent
+                        Injector, and the secret injection flow in pods.
+                    </p>
+                </div>
+                <a href="/en/aiops-lab/phase-3/vault-overview" class="cta-card__btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>
+                    Phase 3 · HashiCorp Vault
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+
+    .f2-hero {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.75rem;
+        margin-bottom: 3rem;
+    }
+    .f2-hero__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+    .f2-hero__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+    .f2-hero__time {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.4rem;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+    }
+    .f2-hero__title {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 700;
+        color: var(--green-50);
+        line-height: 1.15;
+        margin-bottom: 0.5rem;
+    }
+    .f2-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f2-hero__subtitle {
+        font-size: var(--text-md);
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 560px;
+    }
+
+    .overview-section { margin-bottom: 3rem; }
+    .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .overview-text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.65; margin-bottom: 1rem; }
+
+    /* ── Core Viz ── */
+    .core-viz {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        margin-bottom: 1rem;
+    }
+    .core-card {
+        flex: 1;
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+    }
+    .core-card--tofu { border-color: rgba(34, 197, 94, 0.1); background: rgba(34, 197, 94, 0.02); }
+    .core-card__icon { margin-bottom: 0.75rem; color: var(--green-400); }
+    .core-card__icon svg { width: 20px; height: 20px; display: block; }
+    .core-card__label {
+        font-family: var(--font-display);
+        font-size: var(--text-lg);
+        font-weight: 700;
+        color: var(--green-50);
+        margin-bottom: 0.3rem;
+    }
+    .core-card__approach {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--green-400);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.6rem;
+    }
+    .core-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+    .core-divider {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.75rem;
+        flex-shrink: 0;
+    }
+    .core-divider__vs {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        padding: 0.3rem 0.6rem;
+        border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+
+    /* ── Dim Table ── */
+    .dim-table { display: flex; flex-direction: column; gap: 0.4rem; }
+    .dim-row {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.75rem 0.9rem;
+    }
+    .dim-row__aspect {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.4rem;
+    }
+    .dim-row__cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+    .dim-col__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-3xs);
+        color: var(--green-500);
+        display: block;
+        margin-bottom: 0.2rem;
+    }
+    .dim-col__text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin-bottom: 0.35rem; display: block; }
+    .dim-col__tag {
+        font-family: var(--font-mono);
+        font-size: var(--text-4xs);
+        color: var(--text-dim);
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.2rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+        display: inline-block;
+    }
+    .dim-col--iac { border-right: 1px solid var(--border); padding-right: 0.6rem; }
+    .dim-col--cfg { padding-left: 0; }
+
+    /* ── Examples ── */
+    .ex-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .ex-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1rem;
+    }
+    .ex-card__header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.65rem;
+    }
+    .ex-card__num {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--green-300);
+        flex-shrink: 0;
+    }
+    .ex-card__scenario {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+    }
+    .ex-card__cols { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+    .ex-col {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+    }
+    .ex-col__tool {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        font-weight: 600;
+        color: var(--green-400);
+        margin-bottom: 0.5rem;
+    }
+    .ex-col__code {
+        background: #0a0a0a;
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 0.4rem;
+        padding: 0.6rem 0.75rem;
+        margin-bottom: 0.6rem;
+        overflow-x: auto;
+    }
+    .ex-col__code code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        line-height: 1.55;
+    }
+    .ex-col__note {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        padding: 0.75rem;
+        margin-bottom: 0.6rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 0.4rem;
+        border-left: 2px solid rgba(239, 68, 68, 0.25);
+    }
+    .ex-col__when {
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        line-height: 1.5;
+    }
+    .ex-col__when-label {
+        font-family: var(--font-mono);
+        font-size: var(--text-4xs);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-dim);
+        display: block;
+        margin-bottom: 0.2rem;
+    }
+
+    /* ── Division Grid ── */
+    .div-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; margin-bottom: 1rem; }
+    .div-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+    }
+    .div-card--tofu { border-color: rgba(34, 197, 94, 0.1); background: rgba(34, 197, 94, 0.02); }
+    .div-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin-bottom: 0.5rem; }
+    .div-card__list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+    .div-card__list li {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.45;
+        padding-left: 0.85rem;
+        position: relative;
+    }
+    .div-card__list li::before { content: "—"; position: absolute; left: 0; color: var(--text-dim); }
+
+    /* ── Info Card ── */
+    .info-card {
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.875rem 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.6;
+    }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+
+    /* ── Anti-patterns ── */
+    .ap-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .ap-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 0.75rem 0.9rem;
+    }
+    .ap-card__bad {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.4rem;
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: #ef4444;
+        line-height: 1.45;
+        margin-bottom: 0.3rem;
+    }
+    .ap-card__bad svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 0.15rem; }
+    .ap-card__why { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+    .ap-card__why-label { font-family: var(--font-mono); font-size: var(--text-3xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); margin-right: 0.25rem; }
+
+    /* ── CTA ── */
+    .cta-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+    }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--green-50);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.6rem 1rem;
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.2s, border-color 0.2s;
+    }
+    .cta-card__btn:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--border-hover); }
+    .cta-card__btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    @media (max-width: 700px) {
+        .core-viz { flex-direction: column; gap: 0.4rem; }
+        .core-divider { padding: 0.25rem 0; }
+        .dim-row__cols, .ex-card__cols, .div-grid { grid-template-columns: 1fr; }
+        .dim-col--iac { border-right: none; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 0.4rem; }
+    }
+    @media (max-width: 600px) {
+        .cta-card { flex-direction: column; align-items: flex-start; }
+    }
+</style>

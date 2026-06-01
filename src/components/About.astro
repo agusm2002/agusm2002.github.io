@@ -13,13 +13,17 @@ const text = isEnglish
           titleLine2: "infrastructure",
           statYears: "years with Linux",
           statTerminal: "hours in the terminal",
-          bio1: "I am an advanced Computer Engineering student in Argentina. I am especially interested in everything behind systems: how they work, how they are deployed, and how they stay running.",
-          bio2: "I love understanding things from the inside out: Linux, containers, CI/CD, and automation. Every project is an excuse to learn something new and build something real.",
-          learningTitle: "Currently learning (05/2026)",
-          learningLinux: "Advanced Linux",
-          learningLinuxDesc: "systemd, hardening, scripts",
-          learningCloudDesc: "AWS fundamentals, AWS Cloud Practitioner",
-          learningAnsibleDesc: "Playbooks, roles, infra automation",
+          bio1: "I am an advanced Computer Engineering student in Argentina. I ended up specializing in infrastructure almost without realizing it: every time I used a new tool, I wanted to understand how it worked under the hood.",
+          bio2: "Today I work with Linux, Docker, Ansible, and GitHub Actions, and most of my projects aim to be systems that actually run and can be reimplemented — not throwaway demos. Lately I've been expanding into the cloud, observability, and intelligent automation — areas where there's still a lot to learn, and that's exactly what draws me in.",
+          learningTitle: "Currently learning (06/2026)",
+          learningCloud: "Cloud",
+          learningCloudDesc: "Cloud Practitioner · AWS basics · Multicloud architecture · Scalability",
+          learningCICD: "CI/CD",
+          learningCICDDesc: "GitHub Actions · Jenkins · n8n + AI",
+          learningObs: "Observability",
+          learningObsDesc: "Grafana · Prometheus · Loki",
+          learningK8s: "Kubernetes (basics)",
+          learningK8sDesc: "K3s with OpenTofu",
       }
     : {
           label: "Sobre mí",
@@ -27,13 +31,17 @@ const text = isEnglish
           titleLine2: "infraestructura",
           statYears: "años con Linux",
           statTerminal: "horas en la terminal",
-          bio1: "Soy estudiante avanzado de Ingeniería en Informática en Argentina. Me atrae especialmente todo lo que está detrás de los sistemas: cómo funcionan, cómo se despliegan y cómo se mantienen corriendo.",
-          bio2: "Me apasiona entender las cosas desde adentro: Linux, los contenedores, la CI/CD y la automatización. Cada proyecto es una excusa para aprender algo nuevo y construir algo real.",
-          learningTitle: "Actualmente aprendiendo (05/2026)",
-          learningLinux: "Linux Avanzado",
-          learningLinuxDesc: "Hardening, scripts",
-          learningCloudDesc: "Fundamentos de AWS, AWS Cloud Practitioner",
-          learningAnsibleDesc: "Playbooks, roles, automatización de infra",
+          bio1: "Soy estudiante avanzado de Ingeniería en Informática en Argentina. Me terminé especializando en infraestructura casi sin darme cuenta: cada vez que usaba una herramienta nueva, quería entender cómo funcionaba por adentro.",
+          bio2: "Hoy trabajo con Linux, Docker, Ansible y GitHub Actions, y la mayoría de mis proyectos apuntan a ser sistemas que realmente corren y se pueden reimplementar, no demos descartables. Últimamente estoy expandiendo hacia la nube, observabilidad y automatización inteligente — áreas donde todavía hay mucho para aprender y eso es exactamente lo que me atrae.",
+          learningTitle: "Actualmente aprendiendo (06/2026)",
+          learningCloud: "Cloud",
+          learningCloudDesc: "Cloud Practitioner · Servicios AWS (básico) · Arquitectura multicloud · Escalabilidad",
+          learningCICD: "CI/CD",
+          learningCICDDesc: "GitHub Actions · Jenkins · n8n + AI",
+          learningObs: "Observabilidad",
+          learningObsDesc: "Grafana · Prometheus · Loki",
+          learningK8s: "Kubernetes (básico)",
+          learningK8sDesc: "K3s con OpenTofu",
       };
 ---
 
@@ -222,6 +230,7 @@ const text = isEnglish
             <div class="about__learning reveal">
                 <p class="about__learning-title">{text.learningTitle}</p>
                 <div class="about__learning-grid">
+                    <!-- Cloud -->
                     <div
                         class="about__card metal-border"
                         data-tilt
@@ -238,19 +247,17 @@ const text = isEnglish
                                 stroke-width="1.75"
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
-                                ><polyline points="4 17 10 11 4 5"
-                                ></polyline><line
-                                    x1="12"
-                                    y1="19"
-                                    x2="20"
-                                    y2="19"></line></svg
+                                ><path
+                                    d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"
+                                ></path></svg
                             ></span
                         >
                         <div>
-                            <strong>{text.learningLinux}</strong>
-                            <p>{text.learningLinuxDesc}</p>
+                            <strong>{text.learningCloud}</strong>
+                            <p>{text.learningCloudDesc}</p>
                         </div>
                     </div>
+                    <!-- CI/CD -->
                     <div
                         class="about__card metal-border"
                         data-tilt
@@ -274,12 +281,11 @@ const text = isEnglish
                             ></span
                         >
                         <div>
-                            <strong>CI/CD</strong>
-                            <p>
-                                GitHub Actions, pipelines, self-hosted runners
-                            </p>
+                            <strong>{text.learningCICD}</strong>
+                            <p>{text.learningCICDDesc}</p>
                         </div>
                     </div>
+                    <!-- Observability -->
                     <div
                         class="about__card metal-border"
                         data-tilt
@@ -297,15 +303,17 @@ const text = isEnglish
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 ><path
-                                    d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"
-                                ></path></svg
+                                    d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                                ></path><circle cx="12" cy="12" r="3"
+                                ></circle></svg
                             ></span
                         >
                         <div>
-                            <strong>Cloud</strong>
-                            <p>{text.learningCloudDesc}</p>
+                            <strong>{text.learningObs}</strong>
+                            <p>{text.learningObsDesc}</p>
                         </div>
                     </div>
+                    <!-- Kubernetes -->
                     <div
                         class="about__card metal-border"
                         data-tilt
@@ -323,13 +331,13 @@ const text = isEnglish
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 ><circle cx="12" cy="12" r="3"></circle><path
-                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"
+                                    d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
                                 ></path></svg
                             ></span
                         >
                         <div>
-                            <strong>Ansible</strong>
-                            <p>{text.learningAnsibleDesc}</p>
+                            <strong>{text.learningK8s}</strong>
+                            <p>{text.learningK8sDesc}</p>
                         </div>
                     </div>
                 </div>

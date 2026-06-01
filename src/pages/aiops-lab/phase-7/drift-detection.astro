@@ -1,0 +1,111 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+---
+
+<DocsLayout
+    title="Drift Detection Demo - ITOps Automation Lab"
+    description="Fase 7 del Rocky Linux ITOps Automation Lab: demo de self-healing con ArgoCD: borrar un deployment y verlo recrearse automaticamente."
+    activePage="drift-detection"
+    prev={{ label: "App of Apps Pattern", href: "/aiops-lab/phase-7/app-of-apps" }}
+    next={{ label: "Fail2Ban", href: "/aiops-lab/phase-8/fail2ban" }}
+>
+    <div class="docs-page">
+        <div class="f7-hero"><div class="f7-hero__top"><div class="f7-hero__badge">Fase 7.2</div><span class="f7-hero__time">Self-Healing Demo</span></div><h1 class="f7-hero__title">Drift Detection<span class="f7-hero__accent"> · La Demo</span></h1><p class="f7-hero__subtitle">La demostracion mas visual de GitOps: borrar un deployment manualmente y ver como ArgoCD lo detecta como OutOfSync y lo recrea automaticamente en menos de 3 minutos. Sin intervencion humana.</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">El Guion Paso a Paso</h2></div>
+            <p class="overview-lead">Cinco pasos desde el borrado manual hasta la restauracion automatica. El tiempo total es de aproximadamente 3 minutos y 30 segundos.</p>
+
+            <div class="step-list">
+                <div class="step-card"><div class="step-card__num">1</div><div class="step-card__body"><div class="step-card__title">Verificar estado inicial</div><div class="step-card__desc">Todos los deployments estan Synced y Healthy en la UI de ArgoCD. El cluster coincide exactamente con lo declarado en Git.</div></div></div>
+                <div class="step-card"><div class="step-card__num">2</div><div class="step-card__body"><div class="step-card__title">Simular un error humano</div><div class="step-card__desc">kubectl delete deployment grafana -n aiops — como si alguien ejecutara el comando por accidente. El deployment desaparece inmediatamente.</div></div></div>
+                <div class="step-card"><div class="step-card__num">3</div><div class="step-card__body"><div class="step-card__title">ArgoCD detecta el drift</div><div class="step-card__desc">En ~3 minutos, el application-controller compara el estado del cluster contra Git. Detecta que grafana no existe. La aplicacion pasa a estado OutOfSync.</div></div></div>
+                <div class="step-card"><div class="step-card__num">4</div><div class="step-card__body"><div class="step-card__title">Auto-sync: ArgoCD recrea</div><div class="step-card__desc">selfHeal: true activa la reconciliacion automatica. ArgoCD recrea el deployment de Grafana aplicando el manifiesto desde Git. El pod de Grafana vuelve a Running.</div></div></div>
+                <div class="step-card"><div class="step-card__num">5</div><div class="step-card__body"><div class="step-card__title">Estado vuelve a Synced</div><div class="step-card__desc">La UI de ArgoCD muestra la aplicacion como Synced y Healthy. El evento de sync queda registrado en el historial con motivo 'self-heal'.</div></div></div>
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">Los Comandos</h2></div>
+            <div class="terminal-block"><div class="terminal-block__bar"><div class="terminal-block__dots"><span></span><span></span><span></span></div><span class="terminal-block__title">drift detection demo</span></div><div class="terminal-block__body">
+                <div class="t-line"><span class="t-comment"># 1. Verificar estado inicial en ArgoCD</span></div>
+                <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">kubectl get application aiops-lab -n argocd</span></div>
+                <div class="t-line"><span class="t-out">NAME        SYNC STATUS   HEALTH STATUS</span></div>
+                <div class="t-line"><span class="t-out">aiops-lab   <span class="t-ok">Synced</span>        <span class="t-ok">Healthy</span></span></div>
+                <div class="t-line t-line--spacer"></div>
+                <div class="t-line"><span class="t-comment"># 2. Borrar el deployment de Grafana</span></div>
+                <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">kubectl delete deployment grafana -n aiops</span></div>
+                <div class="t-line"><span class="t-out">deployment.apps "grafana" deleted</span></div>
+                <div class="t-line t-line--spacer"></div>
+                <div class="t-line"><span class="t-comment"># 3. Esperar ~3 min y verificar que Grafana volvio</span></div>
+                <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">kubectl get deployment grafana -n aiops</span></div>
+                <div class="t-line"><span class="t-out">NAME      READY   UP-TO-DATE   AVAILABLE   AGE</span></div>
+                <div class="t-line"><span class="t-out">grafana   <span class="t-ok">1/1</span>     1            1           10s</span></div>
+                <div class="t-line t-line--spacer"></div>
+                <div class="t-line"><span class="t-comment"># 4. Verificar estado final en ArgoCD</span></div>
+                <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">kubectl get application aiops-lab -n argocd</span></div>
+                <div class="t-line"><span class="t-out">aiops-lab   <span class="t-ok">Synced</span>        <span class="t-ok">Healthy</span></span></div>
+            </div></div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">Que Demuestra Esto</h2></div>
+            <div class="demo-grid">
+                <div class="demo-card"><div class="demo-card__title">Git es la fuente de verdad</div><div class="demo-card__desc">El cluster no se modifica con comandos. Se modifica con commits a Git. ArgoCD garantiza que el estado real siempre converge al declarado.</div></div>
+                <div class="demo-card"><div class="demo-card__title">Self-healing real</div><div class="demo-card__desc">No es un script de monitoreo que recrea recursos. Es el loop de control de Kubernetes extendido a Git: el estado deseado esta en el repo, no en la memoria de un operador.</div></div>
+                <div class="demo-card"><div class="demo-card__title">Audit trail completo</div><div class="demo-card__desc">Cada cambio en el cluster tiene un commit asociado. Si algo falla, git blame muestra quien cambio que y cuando. El historial de sync de ArgoCD registra cada evento.</div></div>
+                <div class="demo-card"><div class="demo-card__title">Operaciones declarativas</div><div class="demo-card__desc">El operador no ejecuta comandos — declara estado en YAML. ArgoCD se encarga del como. Esto es el paradigma de Kubernetes llevado a la infraestructura.</div></div>
+            </div>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Fase 7 Completada</h3><p class="cta-card__desc">GitOps funcionando con self-healing. La Fase 8 agrega capas de seguridad para produccion: fail2ban, dnf-automatic y hardening checklist.</p></div><a href="/aiops-lab/phase-8/fail2ban" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Fase 8</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f7-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f7-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f7-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f7-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f7-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f7-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f7-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .step-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .step-card { display: flex; gap: 0.75rem; padding: 0.7rem 0.85rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; }
+    .step-card__num { display: flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 700; color: var(--green-400); flex-shrink: 0; }
+    .step-card__body { flex: 1; }
+    .step-card__title { font-weight: 600; font-size: var(--text-sm); color: var(--green-50); margin-bottom: 0.15rem; }
+    .step-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+    .terminal-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; font-family: var(--font-mono); font-size: var(--text-xs); margin-bottom: 1.5rem; }
+    .terminal-block__bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .terminal-block__dots { display: flex; gap: 0.3rem; }
+    .terminal-block__dots span { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.15); display: block; }
+    .terminal-block__title { color: var(--text-dim); font-size: var(--text-2xs); margin-left: auto; margin-right: auto; padding-right: 2.5rem; }
+    .terminal-block__body { padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 0.1rem; }
+    .t-line { line-height: 1.5; } .t-line--spacer { height: 0.35rem; }
+    .t-prompt { color: var(--green-600); margin-right: 0.3rem; }
+    .t-cmd { color: var(--green-300); }
+    .t-out { color: var(--text-dim); padding-left: 0; }
+    .t-ok { color: var(--green-400); }
+    .t-comment { color: rgba(255,255,255,0.25); font-style: italic; }
+    .demo-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 0.5rem; }
+    .demo-card { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.1rem; }
+    .demo-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin-bottom: 0.35rem; }
+    .demo-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 700px) { .demo-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

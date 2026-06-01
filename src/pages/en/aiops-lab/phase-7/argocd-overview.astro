@@ -1,0 +1,139 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+const beforeAfter = [
+    { aspect: "Deploy", before: "kubectl apply -f k3s/manifests/ manual", after: "Push a Git → ArgoCD sincroniza automaticamente" },
+    { aspect: "Drift", before: "Nadie sabe si el cluster difiere de Git", after: "ArgoCD detecta OutOfSync en ~3 minutos y lo reporta" },
+    { aspect: "Self-healing", before: "Si alguien borra un recurso, outage hasta intervencion manual", after: "ArgoCD lo recrea automaticamente. Max 3 min de outage." },
+    { aspect: "Audit trail", before: "Sin registro de quien cambio que en el cluster", after: "Git history es el audit trail. Cada cambio tiene autor y commit message." },
+    { aspect: "Rollback", before: "Revertir cambios manualmente, paso a paso", after: "git revert + push → ArgoCD aplica el rollback automaticamente" },
+];
+
+const keyResources = [
+    { name: "Application aiops-lab", desc: "Define el source (repo Git + path), el destination (cluster + namespace) y la sync policy. Es el unico recurso que se aplica manualmente.", file: "argocd-app.yml" },
+    { name: "argocd namespace", desc: "Namespace dedicado para ArgoCD. Separado de aiops por seguridad — si alguien compromete una app en aiops, ArgoCD sigue protegido.", file: "argocd/install.yaml" },
+    { name: "argocd-server Service", desc: "Expone la UI y API de ArgoCD. En el lab se accede via port-forward. En OCI se expone via Ingress.", file: "argocd/install.yaml" },
+    { name: "application-controller", desc: "El cerebro de ArgoCD. Monitorea el repo Git y compara contra el estado real del cluster. Si divergen, aplica la sync policy.", file: "argocd/install.yaml" },
+];
+---
+
+<DocsLayout
+    title="ArgoCD Overview - ITOps Automation Lab"
+    description="Phase 7 del Rocky Linux ITOps Automation Lab: GitOps with ArgoCD — desired state, auto-sync y drift detection desde el repositorio de Git."
+    activePage="argocd-overview"
+    lang="en"
+    prev={{ label: "Jenkins vs GitHub Actions", href: "/en/aiops-lab/phase-6/jenkins-vs-gh-actions" }}
+    next={{ label: "App of Apps Pattern", href: "/en/aiops-lab/phase-7/app-of-apps" }}
+>
+    <div class="docs-page">
+        <div class="f7-hero"><div class="f7-hero__top"><div class="f7-hero__badge">Phase 7</div><span class="f7-hero__time">ArgoCD</span></div><h1 class="f7-hero__title">ArgoCD Overview<span class="f7-hero__accent"> · GitOps</span></h1><p class="f7-hero__subtitle">ArgoCD convierte el repositorio Git en la fuente de verdad del cluster. Compara continuamente el estado declarado en los manifiestos contra el estado real. Si divergen, reconcilia automaticamente. Es el patron moderno de despliegue en Kubernetes.</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">Antes y Despues de ArgoCD</h2></div>
+            <p class="overview-lead">La diferencia entre operar un cluster con kubectl apply manual y con GitOps no es cosmética — cambia la forma en que se gestiona la infraestructura.</p>
+            <div class="ba-list">
+                {beforeAfter.map((b) => (
+                    <div class="ba-row">
+                        <div class="ba-row__aspect">{b.aspect}</div>
+                        <div class="ba-row__cols">
+                            <div class="ba-col ba-col--old"><span class="ba-col__label">Sin ArgoCD</span>{b.before}</div>
+                            <div class="ba-col ba-col--new"><span class="ba-col__label">Con ArgoCD</span>{b.after}</div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">La Application de ArgoCD</h2></div>
+            <p class="overview-lead">Un solo archivo YAML define que ArgoCD gestione el proyecto. Se aplica una vez con kubectl — despues, ArgoCD toma el control.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">argocd/argocd-app.yml</span></div>
+                <pre><code>apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aiops-lab
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/agusm2002/rocky-linux-aiops-lab
+    targetRevision: main
+    path: k3s/manifests
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: aiops
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true</code></pre>
+            </div>
+            <div class="info-card"><div class="info-card__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="info-card__text"><strong>prune + selfHeal = cluster siempre igual a Git.</strong> prune elimina recursos que se removieron del repo. selfHeal recrea recursos que se borraron manualmente. Con ambos, el estado del cluster nunca diverge del repo.</div></div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">Recursos de ArgoCD</h2></div>
+            <p class="overview-lead">ArgoCD se instala con un solo comando y crea estos recursos. El unico que se escribe manualmente es la Application.</p>
+            <div class="res-list">
+                {keyResources.map((r) => (
+                    <div class="res-row"><div class="res-row__name">{r.name}</div><div class="res-row__desc">{r.desc}</div><code class="res-row__file">{r.file}</code></div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Siguiente: App of Apps</h3><p class="cta-card__desc">El patron de ArgoCD para gestionar multiples aplicaciones desde un solo repositorio Git.</p></div><a href="/en/aiops-lab/phase-7/app-of-apps" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>App of Apps</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f7-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f7-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f7-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f7-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f7-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f7-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f7-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .ba-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .ba-row { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.7rem 0.9rem; }
+    .ba-row__aspect { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+    .ba-row__cols { display: grid; grid-template-columns: repeat(2,1fr); gap: 0.5rem; font-size: var(--text-sm); }
+    .ba-col__label { font-family: var(--font-mono); font-size: var(--text-3xs); display: block; margin-bottom: 0.15rem; }
+    .ba-col--old .ba-col__label { color: var(--text-dim); }
+    .ba-col--old { color: var(--text-dim); line-height: 1.45; }
+    .ba-col--new .ba-col__label { color: var(--green-400); }
+    .ba-col--new { color: var(--green-50); line-height: 1.45; }
+    .code-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .code-block__header { display: flex; align-items: center; padding: 0.45rem 0.85rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .code-block__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .code-block pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .code-block code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+    .info-card { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .info-card__text code { font-family: var(--font-mono); font-size: var(--text-xs); background: rgba(255,255,255,0.06); padding: 0.1rem 0.35rem; border-radius: 0.25rem; color: var(--green-300); }
+    .res-list { display: flex; flex-direction: column; gap: 0.35rem; }
+    .res-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.55rem 0.85rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; font-size: var(--text-sm); }
+    .res-row__name { font-weight: 600; color: var(--green-50); min-width: 150px; }
+    .res-row__desc { color: var(--text-muted); line-height: 1.45; flex: 1; }
+    .res-row__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); background: none; padding: 0; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 700px) { .ba-row__cols { grid-template-columns: 1fr; } .res-row { flex-wrap: wrap; } .res-row__name { min-width: auto; width: 100%; } }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

@@ -1,0 +1,281 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+
+const authConfig = [
+    "vault auth enable kubernetes",
+    "",
+    'vault write auth/kubernetes/config \\',
+    '  kubernetes_host="https://kubernetes.default.svc" \\',
+    '  token_reviewer_jwt="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \\',
+    '  kubernetes_ca_cert="@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt" \\',
+    '  issuer="https://kubernetes.default.svc.cluster.local"',
+    "",
+    "vault write auth/kubernetes/role/grafana \\",
+    "  bound_service_account_names=grafana \\",
+    "  bound_service_account_namespaces=aiops \\",
+    '  policies=grafana-policy \\',
+    "  ttl=1h",
+].join("\n");
+
+const policyExample = [
+    'path "secret/data/grafana/*" {',
+    '  capabilities = ["read"]',
+    "}",
+    "",
+    'path "secret/data/n8n/*" {',
+    '  capabilities = ["read", "list"]',
+    "}",
+].join("\n");
+---
+
+<DocsLayout
+    title="Kubernetes Auth Method - ITOps Automation Lab"
+    description="Fase 3 del Rocky Linux ITOps Automation Lab: metodo de autenticacion Kubernetes en Vault — como los ServiceAccounts de pods se validan contra la API de Kubernetes."
+    activePage="kubernetes-auth"
+    prev={{
+        label: "Vault Agent Injector",
+        href: "/aiops-lab/phase-3/vault-agent-injector",
+    }}
+    next={{
+        label: "Flujo de Inyeccion de Secrets",
+        href: "/aiops-lab/phase-3/secret-injection-flow",
+    }}
+>
+    <div class="docs-page">
+        <div class="f3-hero">
+            <div class="f3-hero__top">
+                <div class="f3-hero__badge">Fase 3.2</div>
+                <span class="f3-hero__time">Kubernetes Auth</span>
+            </div>
+            <h1 class="f3-hero__title">Kubernetes Auth<span class="f3-hero__accent"> · ServiceAccount Trust</span></h1>
+            <p class="f3-hero__subtitle">
+                El metodo de autenticacion que permite a los pods demostrar su
+                identidad ante Vault usando su ServiceAccount token. Sin esta
+                configuracion, el Vault Agent Injector no puede recuperar secrets
+                porque Vault no confia en los tokens de Kubernetes.
+            </p>
+        </div>
+
+        <!-- What -->
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">Como Funciona la Autenticacion</h2></div>
+            <p class="overview-lead">
+                Cada pod en Kubernetes tiene un ServiceAccount token montado en
+                /var/run/secrets/kubernetes.io/serviceaccount/token. El
+                Kubernetes Auth de Vault valida este token contra la API de
+                Kubernetes: si el token es valido, Vault asigna al pod las
+                politicas definidas en el role que matchea su ServiceAccount.
+            </p>
+
+            <div class="flow-simple">
+                <div class="fs-step">Pod presenta su SA token</div>
+                <div class="fs-arrow">→</div>
+                <div class="fs-step">Vault lo reenvia al API Server de K8s</div>
+                <div class="fs-arrow">→</div>
+                <div class="fs-step">API Server valida: token valido + SA existe</div>
+                <div class="fs-arrow">→</div>
+                <div class="fs-step">Vault busca el role que matchea ese SA</div>
+                <div class="fs-arrow">→</div>
+                <div class="fs-step">Vault asigna las politicas del role al token</div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>Vault no genera ni almacena credenciales de Kubernetes.</strong>
+                    Actua como un federated identity provider: confia en que
+                    Kubernetes ya autentico al pod. Si el API Server dice que el
+                    token es valido, Vault lo acepta. Esto se llama trust
+                    delegation — una practica estandar en seguridad.
+                </div>
+            </div>
+        </div>
+
+        <!-- Config -->
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">Configuracion</h2></div>
+            <p class="overview-lead">
+                Tres pasos: habilitar el metodo, configurar la conexion con el
+                API Server, y crear roles que asocien ServiceAccounts con
+                politicas de Vault.
+            </p>
+
+            <h3 class="subsection-title">1. Habilitar el metodo</h3>
+            <div class="code-block">
+                <div class="code-block__header"><span class="code-block__file">vault (dentro del pod)</span></div>
+                <pre><code>vault auth enable kubernetes</code></pre>
+            </div>
+
+            <h3 class="subsection-title">2. Configurar la conexion con K8s</h3>
+            <div class="code-block">
+                <div class="code-block__header"><span class="code-block__file">Configuracion del endpoint de Kubernetes en Vault</span></div>
+                <pre><code>{authConfig}</code></pre>
+            </div>
+            <p class="overview-text">
+                Vault necesita tres datos para validar tokens de Kubernetes:
+                la URL del API Server (kubernetes_host), un token con permisos
+                de TokenReview (token_reviewer_jwt), y el CA certificate para
+                verificar la firma del API Server. En k3s, estos tres valores
+                estan disponibles en /var/run/secrets/ dentro de cada pod.
+            </p>
+
+            <h3 class="subsection-title">3. Crear roles</h3>
+            <p class="overview-text">
+                Cada role define que ServiceAccounts (namespace + nombre)
+                pueden autenticarse y que politicas de Vault reciben. Un
+                ServiceAccount que no matchea ningun role es rechazado — no
+                puede leer ningun secret.
+            </p>
+        </div>
+
+        <!-- Roles & Policies -->
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">Roles y Politicas</h2></div>
+            <p class="overview-lead">
+                La asociacion ServiceAccount → Role → Policy es el corazon de
+                la autorizacion en Vault + Kubernetes. Cada capa agrega una
+                restriccion.
+            </p>
+
+            <div class="role-chain">
+                <div class="rc-node">
+                    <div class="rc-node__label">ServiceAccount</div>
+                    <code class="rc-node__val">grafana / aiops</code>
+                    <div class="rc-node__desc">Identidad del pod en Kubernetes</div>
+                </div>
+                <div class="rc-arrow">→</div>
+                <div class="rc-node">
+                    <div class="rc-node__label">Role</div>
+                    <code class="rc-node__val">grafana</code>
+                    <div class="rc-node__desc">Matchea SA grafana en ns aiops. Asigna policies + TTL.</div>
+                </div>
+                <div class="rc-arrow">→</div>
+                <div class="rc-node">
+                    <div class="rc-node__label">Policy</div>
+                    <code class="rc-node__val">grafana-policy</code>
+                    <div class="rc-node__desc">Define que paths de Vault puede leer</div>
+                </div>
+            </div>
+
+            <h3 class="subsection-title">Ejemplo de Policy HCL</h3>
+            <div class="code-block">
+                <div class="code-block__header"><span class="code-block__file">grafana-policy.hcl</span></div>
+                <pre><code>{policyExample}</code></pre>
+            </div>
+
+            <p class="overview-text">
+                Esta politica permite leer cualquier secret bajo
+                secret/data/grafana/ y listar y leer bajo secret/data/n8n/.
+                El pod de Grafana puede leer sus propios secrets y los de n8n,
+                pero no puede escribir ni acceder a otros paths. Principio de
+                least-privilege.
+            </p>
+        </div>
+
+        <!-- Defaults -->
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">04</span><h2 class="overview-h2">TTL y Renovacion</h2></div>
+            <p class="overview-lead">
+                Los tokens generados por Kubernetes Auth tienen TTL limitado.
+                El Vault Agent (init container o sidecar) los renueva
+                automaticamente antes de que expiren.
+            </p>
+
+            <div class="ttl-grid">
+                <div class="ttl-card">
+                    <div class="ttl-card__val">1h</div>
+                    <div class="ttl-card__label">TTL del token inicial</div>
+                    <div class="ttl-card__desc">Definido en el role (ttl=1h). Despues de 1 hora, el token expira y deja de funcionar.</div>
+                </div>
+                <div class="ttl-card">
+                    <div class="ttl-card__val">Auto</div>
+                    <div class="ttl-card__label">Renovacion automatica</div>
+                    <div class="ttl-card__desc">El Vault Agent sidecar renueva el token antes de que expire. La app nunca ve un token vencido.</div>
+                </div>
+                <div class="ttl-card">
+                    <div class="ttl-card__val">7 dias</div>
+                    <div class="ttl-card__label">Max TTL</div>
+                    <div class="ttl-card__desc">Despues de 7 dias, el token no se puede renovar mas. El pod necesita reiniciarse para obtener uno nuevo.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CTA -->
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card">
+                <div class="cta-card__content">
+                    <h3 class="cta-card__title">Siguiente: Flujo de Inyeccion</h3>
+                    <p class="cta-card__desc">
+                        Con el Injector y el metodo de autenticacion configurados,
+                        la pagina siguiente recorre el flujo completo end-to-end:
+                        desde el kubectl apply hasta el secret en el filesystem
+                        del contenedor.
+                    </p>
+                </div>
+                <a href="/aiops-lab/phase-3/secret-injection-flow" class="cta-card__btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>
+                    Flujo de Inyeccion
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f3-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f3-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f3-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f3-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f3-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f3-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f3-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; }
+    .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .overview-text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.65; margin-bottom: 1rem; }
+    .overview-text code { font-family: var(--font-mono); font-size: var(--text-xs); background: rgba(255,255,255,0.06); padding: 0.1rem 0.35rem; border-radius: 0.25rem; color: var(--green-300); }
+    .subsection-title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 1.5rem 0 0.75rem; }
+
+    .info-card { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+
+    .flow-simple { display: flex; align-items: center; gap: 0.3rem; padding: 1rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; margin-bottom: 1rem; overflow-x: auto; }
+    .fs-step { font-size: var(--text-xs); color: var(--text-dim); white-space: nowrap; padding: 0.3rem 0.5rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 0.3rem; }
+    .fs-arrow { color: var(--green-500); flex-shrink: 0; font-weight: 700; }
+
+    .code-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .code-block__header { display: flex; align-items: center; padding: 0.45rem 0.85rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .code-block__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .code-block pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .code-block code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+
+    .role-chain { display: flex; align-items: center; gap: 0.5rem; padding: 1rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; margin-bottom: 1.25rem; overflow-x: auto; }
+    .rc-node { text-align: center; padding: 0.5rem 0.7rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.5rem; flex-shrink: 0; }
+    .rc-node__label { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.15rem; }
+    .rc-node__val { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 600; color: var(--green-300); background: none; padding: 0; display: block; margin-bottom: 0.15rem; }
+    .rc-node__desc { font-size: var(--text-2xs); color: var(--text-dim); }
+    .rc-arrow { color: var(--green-500); font-weight: 700; font-size: var(--text-lg); flex-shrink: 0; }
+
+    .ttl-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .ttl-card { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.85rem; text-align: center; }
+    .ttl-card__val { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 700; color: var(--green-400); margin-bottom: 0.2rem; }
+    .ttl-card__label { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); margin-bottom: 0.4rem; }
+    .ttl-card__desc { font-size: var(--text-xs); color: var(--text-muted); line-height: 1.45; }
+
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 700px) { .ttl-grid { grid-template-columns: 1fr; } .flow-simple, .role-chain { flex-direction: column; align-items: flex-start; gap: 0.3rem; } .fs-arrow, .rc-arrow { display: none; } }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

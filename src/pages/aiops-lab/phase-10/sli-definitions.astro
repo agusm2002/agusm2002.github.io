@@ -1,0 +1,72 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+const slis = [
+    { name: "Disponibilidad de Grafana", query: "avg_over_time(up{job='grafana'}[30d]) * 100", unit: "%", desc: "Porcentaje del tiempo que Grafana responde. Si Grafana esta caido, los dashboards no son accesibles y el SLO se esta consumiendo." },
+    { name: "Latencia p95 de n8n", query: "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job='n8n'}[5m]))", unit: "segundos", desc: "Tiempo que tarda n8n en procesar requests. Un p95 alto significa que el 5% de las requests son lentas." },
+    { name: "Error rate de procesamiento", query: "rate(n8n_executions_failed_total[5m]) / rate(n8n_executions_total[5m]) * 100", unit: "%", desc: "Porcentaje de ejecuciones de workflows que fallan. Si este SLI se dispara, las alertas no se estan procesando correctamente." },
+    { name: "Build success rate (Jenkins)", query: "rate(jenkins_builds_failed[24h]) / rate(jenkins_builds_total[24h]) * 100", unit: "%", desc: "Porcentaje de builds que fallan. Un SLI complementario sin SLO — se monitorea para detectar regresiones en el pipeline." },
+];
+---
+
+<DocsLayout title="SLI Definitions - ITOps Automation Lab" activePage="sli-definitions"
+    prev={{ label: "Lab vs Production", href: "/aiops-lab/phase-9/lab-vs-prod" }}
+    next={{ label: "SLO Objectives", href: "/aiops-lab/phase-10/slo-objectives" }}
+>
+    <div class="docs-page">
+        <div class="h"><div class="h__top"><div class="h__badge">Fase 10</div><span class="h__time">SLO/SLI</span></div><h1 class="h__title">SLI Definitions<span class="h__accent"> · Que Medimos</span></h1><p class="h__sub">Los SLIs (Service Level Indicators) son las metricas que miden la salud del sistema desde la perspectiva del usuario. Cuatro indicadores cubren disponibilidad, latencia, tasa de error y builds.</p></div>
+
+        <div class="sec">
+            <div class="sec__h"><span class="sec__num">01</span><h2 class="sec__h2">Indicadores</h2></div>
+            <div class="sli-list">
+                {slis.map((s) => (
+                    <div class="sli">
+                        <div class="sli__name">{s.name}</div>
+                        <code class="sli__q">{s.query}</code>
+                        <div class="sli__meta"><span>{s.unit}</span></div>
+                        <div class="sli__desc">{s.desc}</div>
+                    </div>
+                ))}
+            </div>
+            <div class="info info--tip"><div class="info__icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div><div class="info__text"><b>Por que SLIs y no solo alerts.</b> Las alerts dicen "algo esta mal ahora". Los SLIs dicen "que tan bien estuvo funcionando el sistema en el ultimo mes". Son complementarios.</div></div>
+        </div>
+
+        <div class="sec sec--cta">
+            <div class="cta"><div class="cta__content"><h3 class="cta__title">Siguiente: SLO Objectives</h3><p class="cta__desc">Los objetivos de nivel de servicio y el concepto de error budget.</p></div><a href="/aiops-lab/phase-10/slo-objectives" class="cta__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>SLOs</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style>
+    .docs-page { max-width: 740px; }
+    .h { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .h__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .h__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .h__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .h__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .h__accent { color: var(--green-500); font-weight: 500; }
+    .h__sub { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .sec { margin-bottom: 3rem; }
+    .sec--cta { margin-top: 1rem; }
+    .sec__h { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .sec__num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .sec__h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .sli-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .sli { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.6rem; padding: 0.8rem 0.9rem; }
+    .sli__name { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin-bottom: 0.3rem; }
+    .sli__q { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); background: rgba(255,255,255,0.04); padding: 0.15rem 0.4rem; border-radius: 0.25rem; border: 1px solid var(--border); display: inline-block; margin-bottom: 0.35rem; }
+    .sli__meta { margin-bottom: 0.2rem; }
+    .sli__meta span { font-family: var(--font-mono); font-size: var(--text-3xs); color: var(--text-dim); padding: 0.1rem 0.3rem; border-radius: 0.2rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .sli__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+    .info { display: flex; gap: 0.65rem; padding: 0.875rem 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6; }
+    .info--tip { border-color: rgba(34,197,94,0.2); background: rgba(34,197,94,0.03); }
+    .info__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info__icon svg { width: 16px; height: 16px; display: block; }
+    .info__text b { color: var(--green-50); font-weight: 600; }
+    .cta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta__content { flex: 1; }
+    .cta__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 600px) { .cta { flex-direction: column; align-items: flex-start; } }
+</style>

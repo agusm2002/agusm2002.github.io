@@ -1,0 +1,50 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+const lessons = [
+    { title: "SELinux no se desactiva, se aprende", desc: "La mayoria de los tutorials de k3s dicen 'desactiva SELinux'. El proyecto demuestra que se puede correr k3s con SELinux enforcing usando dos booleanos. El tiempo extra de configuracion se paga con conocimiento transferible a produccion." },
+    { title: "OpenTofu y Ansible no compiten", desc: "Cada tool tiene su scope. OpenTofu crea recursos con IDs. Ansible configura sistemas operativos. Respetar esta frontera evita el acoplamiento mas comun en proyectos IaC." },
+    { title: "Vault en modo dev es suficiente para aprender", desc: "No hace falta un cluster de Vault con Raft y TLS para entender como funciona la inyeccion de secrets. El modo dev permite aprender el flujo completo sin la complejidad operacional." },
+    { title: "n8n + LLM es el diferenciador real", desc: "Cualquiera puede instalar Prometheus y Grafana. Muy pocos cierran el loop con un LLM analizando alertas en tiempo real y notificando a Discord. La Fase 5 es lo que hace que este proyecto se destaque." },
+    { title: "GitOps no es un tool, es un cambio de mentalidad", desc: "ArgoCD no es 'kubectl apply automatico'. Es dejar de pensar en comandos y empezar a pensar en estado deseado. El cluster no se opera, se declara." },
+    { title: "Documentar cada decision desde el dia 1", desc: "Cada decision de disenio tiene una justificacion escrita. 'Por que Rocky y no Ubuntu', 'Por que Jenkins y no solo Actions'. Tener esto documentado da consistencia y profundidad al proyecto." },
+];
+---
+
+<DocsLayout title="Lecciones Aprendidas - ITOps Automation Lab" activePage="lessons-learned"
+    prev={{ label: "Grafana SLO Dashboard", href: "/aiops-lab/phase-10/grafana-slo-dashboard" }}
+    next={{ label: "Recursos y Links", href: "/aiops-lab/reference/resources-links" }}
+>
+    <div class="docs-page">
+        <div class="h"><div class="h__top"><div class="h__badge">Reference</div><span class="h__time">Lessons Learned</span></div><h1 class="h__title">Lecciones Aprendidas<span class="h__accent"> · Lo Que Queda</span></h1><p class="h__sub">Seis aprendizajes del proyecto que van mas alla de la tecnologia. Lo importante no es que tools se usaron — es por que se tomaron esas decisiones y que se aprendio en el proceso.</p></div>
+        <div class="ll">
+            {lessons.map((l) => (
+                <div class="lc"><div class="lc__title">{l.title}</div><div class="lc__desc">{l.desc}</div></div>
+            ))}
+        </div>
+        <div class="cta-wrap">
+            <div class="cta"><div class="cta__content"><h3 class="cta__title">Ultima pagina: Recursos y Links</h3></div><a href="/aiops-lab/reference/resources-links" class="cta__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Recursos</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style>
+    .docs-page { max-width: 740px; }
+    .h { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .h__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .h__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .h__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .h__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .h__accent { color: var(--green-500); font-weight: 500; }
+    .h__sub { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .ll { display: flex; flex-direction: column; gap: 0.6rem; }
+    .lc { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.1rem; }
+    .lc__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin-bottom: 0.35rem; }
+    .lc__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; }
+    .cta-wrap { margin-top: 2rem; }
+    .cta { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta__content { flex: 1; }
+    .cta__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0; }
+    .cta__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 600px) { .cta { flex-direction: column; align-items: flex-start; } }
+</style>

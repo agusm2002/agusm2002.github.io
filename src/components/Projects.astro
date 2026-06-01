@@ -17,24 +17,49 @@ const stack = [
     "Uptime Kuma",
     "GitHub Actions",
 ];
+
+const aiopsStack = [
+    "Rocky Linux",
+    "K3s",
+    "Ansible",
+    "OpenTofu",
+    "ArgoCD",
+    "Jenkins",
+    "N8N",
+    "Grafana",
+    "Prometheus",
+    "Loki",
+    "HashiCorp Vault",
+];
+
+const techLogoMap: Record<string, string> = {
+    "Rocky Linux": "rockylinux.svg",
+    K3s: "k3s.svg",
+    Ansible: "ansible.svg",
+    OpenTofu: "opentofu.svg",
+    ArgoCD: "argocd.svg",
+    Jenkins: "jenkins.svg",
+    N8N: "n8n.svg",
+    Grafana: "grafana.svg",
+    Prometheus: "prometheus.svg",
+    Loki: "loki.png",
+    "HashiCorp Vault": "vault.svg",
+};
+
 const baseUrl = import.meta.env.BASE_URL;
 
 const text = isEnglish
     ? {
           sectionLabel: "Projects",
           sectionTitle: "What I have built",
-          sectionSub:
-              "Main project - real enterprise infrastructure simulation.",
+          sectionSub: "Projects where learning is the goal.",
           featuredBadge: "Featured Project",
           viewGithubAria: "View on GitHub",
           mainDesc:
               "Real infrastructure platform on Ubuntu Server ARM64: containerized applications exposed via Nginx reverse proxy, full provisioning and hardening with Ansible (UFW, Fail2Ban, ClamAV, SSH), private ZeroTier network, and CI/CD with self-hosted GitHub Actions.",
           viewRepo: "View repository",
-          nextUpdate: "Next update: migrate to the cloud",
+          nextUpdate: "",
           archLabel: "Real architecture",
-          moreProjectsTitle: "More projects",
-          moreProjectsSub:
-              "Before specializing in infrastructure, I explored other branches to find what truly motivates me. These projects show that when I decide to learn something, I go all in.",
           chronoAria: "View Chrono Reader on GitHub",
           chronoDesc:
               "Native iOS app built from scratch with Swift and SwiftUI. Read CBZ/CBR comics, digital books, and M4B audiobooks with chapter playback, variable speed, and a custom color collection system.",
@@ -49,22 +74,39 @@ const text = isEnglish
           chronoAltComic: "Comic reader in Chrono Reader",
           chronoAltAudio: "Audiobook player in Chrono Reader",
           chronoAltLibrary: "Library view in Chrono Reader",
+          aiopsBadge: "ITOps & Automation",
+          aiopsTitle: "Rocky Linux AIOps Lab",
+          aiopsDesc:
+              "Self-hosted ITOps automation platform on Rocky Linux — from local k3s lab to Oracle Cloud Free Tier. n8n orchestrates incident response with LLM analysis via OpenCode Go, deployed with Ansible + OpenTofu, secrets managed with HashiCorp Vault, CI/CD with Jenkins + GitOps with ArgoCD, and production hardening for OCI.",
+          aiopsFeature1:
+              "Incident auto-response loop: Prometheus → Alertmanager → n8n → LLM → Discord",
+          aiopsFeature2:
+              "Full observability: Prometheus + Loki + Grafana Alloy + Grafana dashboards on k3s",
+          aiopsFeature3:
+              "GitOps sync with ArgoCD: manifests from GitHub auto-deployed to cluster",
+          aiopsFeature4:
+              "Jenkins self-hosted CI/CD + GitHub Actions — pipelines, lint, multi-stage builds",
+          aiopsFeature5:
+              "Oracle Cloud Free Tier ready: 4 vCPUs ARM, 24 GB RAM, OCI Vault, Object Storage",
+          aiopsFeature6:
+              "SRE practices: SLO/SLI, fail2ban, dnf-automatic, SELinux enforcing, firewalld",
+          aiopsAria: "View Rocky Linux AIOps Lab on GitHub",
+          aiopsDocs: "Docs",
+          prevAria: "Previous project",
+          nextAria: "Next project",
+          slideAria: "Go to slide",
       }
     : {
           sectionLabel: "Proyectos",
           sectionTitle: "Lo que he construido",
-          sectionSub:
-              "Proyecto principal - simulación de infraestructura empresarial real.",
-          featuredBadge: "Proyecto Destacado",
+          sectionSub: "Proyectos donde el aprendizaje es el objetivo.",
+          featuredBadge: "Infra & DevOps",
           viewGithubAria: "Ver en GitHub",
           mainDesc:
               "Plataforma de infraestructura real sobre Ubuntu Server ARM64: aplicaciones dockerizadas expuestas via Nginx reverse proxy, aprovisionamiento y hardening completo con Ansible (UFW, Fail2Ban, ClamAV, SSH), red privada ZeroTier y CI/CD con GitHub Actions self-hosted.",
           viewRepo: "Ver repositorio",
-          nextUpdate: "Próximo update: migrar a la nube",
-          archLabel: "Arquitectura real",
-          moreProjectsTitle: "Más proyectos",
-          moreProjectsSub:
-              "Antes de especializarme en infra, exploré otras ramas para encontrar qué me apasionaba de verdad. Estos proyectos demuestran que cuando me propongo aprender algo, lo hago en serio.",
+          nextUpdate: "",
+          archLabel: "Architecture",
           chronoAria: "Ver Chrono Reader en GitHub",
           chronoDesc:
               "App iOS nativa construida desde cero con Swift y SwiftUI. Lee cómics CBZ/CBR, libros digitales y audiolibros M4B con reproductor de capítulos, velocidad variable y sistema de colecciones con color personalizado.",
@@ -79,6 +121,27 @@ const text = isEnglish
           chronoAltComic: "Lector de cómic en Chrono Reader",
           chronoAltAudio: "Reproductor de audiolibros en Chrono Reader",
           chronoAltLibrary: "Biblioteca en Chrono Reader",
+          aiopsBadge: "ITOps & Automatización",
+          aiopsTitle: "Rocky Linux AIOps Lab",
+          aiopsDesc:
+              "Plataforma self-hosted de automatización ITOps sobre Rocky Linux — de lab local en k3s a Oracle Cloud Free Tier. n8n orquesta respuestas a incidentes con análisis LLM via OpenCode Go, desplegada con Ansible + OpenTofu, secrets con HashiCorp Vault, CI/CD con Jenkins + GitOps con ArgoCD y hardening de producción para OCI.",
+          aiopsFeature1:
+              "Loop de respuesta a incidentes: Prometheus → Alertmanager → n8n → LLM → Discord",
+          aiopsFeature2:
+              "Observabilidad completa: Prometheus + Loki + Grafana Alloy + dashboards en k3s",
+          aiopsFeature3:
+              "GitOps con ArgoCD: manifiestos desde GitHub auto-desplegados al cluster",
+          aiopsFeature4:
+              "Jenkins self-hosted CI/CD + GitHub Actions — pipelines, lint, multi-stage builds",
+          aiopsFeature5:
+              "Oracle Cloud Free Tier ready: 4 vCPUs ARM, 24 GB RAM, OCI Vault, Object Storage",
+          aiopsFeature6:
+              "Prácticas SRE: SLO/SLI, fail2ban, dnf-automatic, SELinux enforcing, firewalld",
+          aiopsAria: "Ver Rocky Linux AIOps Lab en GitHub",
+          aiopsDocs: "Docs",
+          prevAria: "Proyecto anterior",
+          nextAria: "Proyecto siguiente",
+          slideAria: "Ir a diapositiva",
       };
 
 const features = [
@@ -116,491 +179,360 @@ const features = [
 ---
 
 <section id="projects" class="section">
-    <div class="container">
-        <p class="section-label reveal">{text.sectionLabel}</p>
-        <h2 class="section-title reveal" style="margin-bottom:0.75rem">
+    <div class="container reveal-group">
+        <p class="section-label reveal-item">{text.sectionLabel}</p>
+        <h2 class="section-title reveal-item" style="margin-bottom:0.75rem">
             {text.sectionTitle}
         </h2>
-        <p class="proj__sub reveal">{text.sectionSub}</p>
+        <p class="proj__sub reveal-item">{text.sectionSub}</p>
+    </div>
 
-        <article
-            class="proj-card metal-border reveal"
-            data-tilt
-            data-tilt-max="1.5"
-            style="--metal-delay: -12s; --metal-duration: 32s;"
+    <!-- ═══ Carousel ═══ -->
+    <div class="carousel-wrapper reveal" id="carouselWrapper">
+        <button
+            class="carousel__arrow carousel__arrow--left"
+            id="carouselPrev"
+            aria-label={text.prevAria}
         >
-            <!-- Top bar -->
-            <div class="proj-card__header">
-                <div
-                    class="proj-card__badge metal-border-subtle"
-                    style="--metal-delay: -1s; --metal-duration: 24s;"
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                        ><polygon
-                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-                        ></polygon></svg
-                    >
-                    {text.featuredBadge}
-                </div>
-                <a
-                    href="https://github.com/agusm2002/simulated-enterprise-devops-infrastructure-lab"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="proj-card__gh-link"
-                    aria-label={text.viewGithubAria}
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        aria-hidden="true"
-                        ><path
-                            d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
-                        ></path></svg
-                    >
-                    <span>GitHub</span>
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                        ><path d="M7 17L17 7M17 7H7M17 7v10"></path></svg
-                    >
-                </a>
-            </div>
-
-            <!-- Body: left content + right diagram -->
-            <div class="proj-card__body">
-                <!-- Left -->
-                <div class="proj-card__left">
-                    <h3 class="proj-card__title">
-                        Simulated Enterprise<br />
-                        <span class="proj-title-accent"
-                            >DevOps Infrastructure Lab</span
-                        >
-                    </h3>
-
-                    <p class="proj-card__desc">
-                        {text.mainDesc}
-                    </p>
-
-                    <ul class="proj-features" role="list">
-                        {
-                            features.map((f) => (
-                                <li class="proj-feature">
-                                    <span class="proj-feature__icon">
-                                        <Fragment set:html={f.icon} />
-                                    </span>
-                                    <span>{f.text}</span>
-                                </li>
-                            ))
-                        }
-                    </ul>
-
-                    <div class="proj-stack">
-                        {
-                            stack.map((t) => (
-                                <span
-                                    class="spill metal-border-subtle"
-                                    style="--metal-delay: -9s; --metal-duration: 22s;"
-                                >
-                                    {techIcons[t] && (
-                                        <Fragment set:html={techIcons[t]} />
-                                    )}
-                                    {t}
-                                </span>
-                            ))
-                        }
-                    </div>
-
-                    <div class="proj-cta-row">
-                        <a
-                            href="https://github.com/agusm2002/simulated-enterprise-devops-infrastructure-lab"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="btn btn-primary proj-cta metal-border"
-                            style="--metal-delay: -6s; --metal-duration: 26s;"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="15"
-                                height="15"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                                aria-hidden="true"
-                                ><path
-                                    d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
-                                ></path></svg
-                            >
-                            {text.viewRepo}
-                        </a>
-
-                        <div class="proj-roadmap">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="13"
-                                height="13"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                aria-hidden="true"
-                                ><path
-                                    d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"
-                                ></path></svg
-                            >
-                            <span>{text.nextUpdate}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Right: architecture diagram -->
-                <div class="proj-arch" aria-hidden="true">
-                    <div class="arch-label">{text.archLabel}</div>
-                    <div class="arch-diagram">
-                        <!-- Layer 1: CI/CD -->
-                        <div class="arch-row">
-                            <div class="arch-node arch-node--top">
-                                <Fragment
-                                    set:html={techIcons["GitHub Actions"]}
-                                />
-                                GitHub Actions
-                            </div>
-                        </div>
-                        <div class="arch-connector arch-connector--v"></div>
-
-                        <!-- Layer 2: Self-hosted runner -->
-                        <div class="arch-row">
-                            <div class="arch-node arch-node--server">
-                                <Fragment
-                                    set:html={techIcons["Ubuntu Server"]}
-                                />
-                                Ubuntu Server ARM64
-                            </div>
-                        </div>
-                        <div class="arch-connector arch-connector--v"></div>
-
-                        <!-- Layer 3: Ansible -->
-                        <div class="arch-row">
-                            <div class="arch-node arch-node--ansible">
-                                <Fragment set:html={techIcons["Ansible"]} />
-                                Ansible
-                            </div>
-                        </div>
-                        <div class="arch-connector arch-connector--v"></div>
-
-                        <!-- Layer 4: Nginx -->
-                        <div class="arch-row">
-                            <div class="arch-node arch-node--nginx">
-                                <Fragment set:html={techIcons["Nginx"]} />
-                                Nginx Reverse Proxy
-                            </div>
-                        </div>
-                        <div class="arch-connector arch-connector--v"></div>
-
-                        <!-- Layer 5: Docker Compose -->
-                        <div class="arch-row">
-                            <div class="arch-node arch-node--docker">
-                                <Fragment set:html={techIcons["Docker"]} />
-                                Docker Compose
-                            </div>
-                        </div>
-
-                        <!-- branch lines -->
-                        <div class="arch-branch" aria-hidden="true">
-                            <span class="branch-v"></span>
-                            <span class="branch-h"></span>
-                            <span class="branch-v"></span>
-                        </div>
-
-                        <!-- Layer 5: Apps -->
-                        <div
-                            class="arch-row arch-row--multi"
-                            style="gap:0.5rem"
-                        >
-                            <div class="arch-node arch-node--app">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="10"
-                                    height="10"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    ><rect
-                                        x="3"
-                                        y="3"
-                                        width="18"
-                                        height="18"
-                                        rx="2"></rect><path d="M3 9h18M9 21V9"
-                                    ></path></svg
-                                >
-                                <span
-                                    >AgroSinergia<span class="arch-app-stack"
-                                        >Next.js · NestJS · PG · Refine</span
-                                    ></span
-                                >
-                            </div>
-                            <div
-                                class="arch-node arch-node--app arch-node--app2"
-                            >
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="10"
-                                    height="10"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    ><rect
-                                        x="3"
-                                        y="3"
-                                        width="18"
-                                        height="18"
-                                        rx="2"></rect><path d="M3 9h18M9 21V9"
-                                    ></path></svg
-                                >
-                                <span
-                                    >Safe-Tek<span class="arch-app-stack"
-                                        >Astro · Node API · PostgreSQL</span
-                                    ></span
-                                >
-                            </div>
-                        </div>
-
-                        <div class="arch-connector arch-connector--v"></div>
-
-                        <!-- Layer 6: Infra -->
-                        <div
-                            class="arch-row arch-row--multi"
-                            style="gap:0.35rem"
-                        >
-                            <div class="arch-node arch-node--sm arch-node--sec">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="10"
-                                    height="10"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    ><rect
-                                        x="3"
-                                        y="11"
-                                        width="18"
-                                        height="11"
-                                        rx="2"></rect><path
-                                        d="M7 11V7a5 5 0 0110 0v4"></path></svg
-                                >
-                                ZeroTier
-                            </div>
-                            <div class="arch-node arch-node--sm arch-node--mon">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width="10"
-                                    height="10"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    stroke-width="2"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    ><polyline
-                                        points="22 12 18 12 15 21 9 3 6 12 2 12"
-                                    ></polyline></svg
-                                >
-                                Uptime Kuma
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </article>
-
-        <!-- ── Other projects ── -->
-        <div class="other-projs reveal">
-            <h3 class="other-projs__title">{text.moreProjectsTitle}</h3>
-            <p class="other-projs__sub">
-                {text.moreProjectsSub}
-            </p>
-        </div>
-
-        <div class="mini-cards">
-            <!-- Chrono Reader -->
-            <article
-                class="mini-card metal-border reveal"
-                data-tilt
-                data-tilt-max="2"
-                style="--metal-delay: -18s; --metal-duration: 30s;"
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><polyline points="15 18 9 12 15 6"></polyline></svg
             >
-                <!-- Left: content -->
-                <div class="mini-card__content">
-                    <div class="mini-card__top">
-                        <a
-                            href="https://github.com/agusm2002/chrono-reader"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="mini-card__gh-link"
-                            aria-label={text.chronoAria}
+        </button>
+
+        <div class="carousel__viewport" id="carouselViewport">
+            <!-- ══ Slide 0: Featured Project ══ -->
+            <article
+                class="carousel__slide metal-border"
+                data-glow
+                style="--metal-delay: -12s; --metal-duration: 32s;"
+                data-slide-index="0"
+            >
+                <div class="proj-card__header">
+                    <div
+                        class="proj-card__badge metal-border-subtle"
+                        style="--metal-delay: -1s; --metal-duration: 24s;"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="13"
+                            height="13"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                            ><polygon
+                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                            ></polygon></svg
                         >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                                aria-hidden="true"
-                                ><path
-                                    d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
-                                ></path></svg
-                            >
-                            <span>GitHub</span>
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="11"
-                                height="11"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="2"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                aria-hidden="true"
-                                ><path d="M7 17L17 7M17 7H7M17 7v10"
-                                ></path></svg
-                            >
-                        </a>
+                        {text.featuredBadge}
                     </div>
-
-                    <h4 class="mini-card__title">Chrono Reader</h4>
-
-                    <p class="mini-card__desc">
-                        {text.chronoDesc}
-                    </p>
-
-                    <ul class="mini-features" role="list">
-                        <li class="mini-feature">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.75"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                aria-hidden="true"
-                                ><path d="M4 19.5A2.5 2.5 0 016.5 17H20"
-                                ></path><path
-                                    d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"
-                                ></path></svg
-                            >
-                            {text.chronoFeature1}
-                        </li>
-                        <li class="mini-feature">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.75"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                aria-hidden="true"
-                                ><rect x="3" y="3" width="18" height="18" rx="2"
-                                ></rect><path d="M3 9h18M9 21V9"></path></svg
-                            >
-                            {text.chronoFeature2}
-                        </li>
-                        <li class="mini-feature">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.75"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                aria-hidden="true"
-                                ><path d="M3 18v-6a9 9 0 0118 0v6"></path><path
-                                    d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"
-                                ></path></svg
-                            >
-                            {text.chronoFeature3}
-                        </li>
-                        <li class="mini-feature">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="14"
-                                height="14"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                stroke-width="1.75"
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                aria-hidden="true"
-                                ><path
-                                    d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"
-                                ></path></svg
-                            >
-                            {text.chronoFeature4}
-                        </li>
-                    </ul>
-
-                    <div class="mini-stack">
-                        {
-                            ["Swift"].map((t) => (
-                                <span
-                                    class="mini-spill metal-border-subtle"
-                                    style="--metal-delay: -14s; --metal-duration: 22s;"
-                                >
-                                    {techIcons[t] && (
-                                        <Fragment set:html={techIcons[t]} />
-                                    )}
-                                    {t}
-                                </span>
-                            ))
-                        }
-                    </div>
-
                     <a
-                        href="https://github.com/agusm2002/chrono-reader"
+                        href="https://github.com/agusm2002/simulated-enterprise-devops-infrastructure-lab"
                         target="_blank"
                         rel="noopener noreferrer"
-                        class="btn btn-ghost metal-border mini-cta"
-                        style="--metal-delay: -7s; --metal-duration: 24s;"
+                        class="proj-card__gh-link"
+                        aria-label={text.viewGithubAria}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            aria-hidden="true"
+                            ><path
+                                d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+                            ></path></svg
+                        >
+                        <span>GitHub</span>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="13"
+                            height="13"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                            ><path d="M7 17L17 7M17 7H7M17 7v10"></path></svg
+                        >
+                    </a>
+                </div>
+
+                <div class="proj-card__body">
+                    <div class="proj-card__left">
+                        <h3 class="proj-card__title">
+                            Self-Hosted Web<br />
+                            <span class="proj-title-accent"
+                                >Infrastructure Lab</span
+                            >
+                        </h3>
+
+                        <p class="proj-card__desc">
+                            {text.mainDesc}
+                        </p>
+
+                        <ul class="proj-features" role="list">
+                            {
+                                features.map((f) => (
+                                    <li class="proj-feature">
+                                        <span class="proj-feature__icon">
+                                            <Fragment set:html={f.icon} />
+                                        </span>
+                                        <span>{f.text}</span>
+                                    </li>
+                                ))
+                            }
+                        </ul>
+
+                        <div class="proj-stack">
+                            {
+                                stack.map((t) => (
+                                    <span
+                                        class="spill metal-border-subtle"
+                                        style="--metal-delay: -9s; --metal-duration: 22s;"
+                                    >
+                                        {techIcons[t] && (
+                                            <Fragment set:html={techIcons[t]} />
+                                        )}
+                                        {t}
+                                    </span>
+                                ))
+                            }
+                        </div>
+
+                        <div class="proj-cta-row">
+                            <a
+                                href="https://github.com/agusm2002/simulated-enterprise-devops-infrastructure-lab"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="btn btn-primary proj-cta metal-border"
+                                style="--metal-delay: -6s; --metal-duration: 26s;"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="15"
+                                    height="15"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+                                    ></path></svg
+                                >
+                                {text.viewRepo}
+                            </a>
+
+
+                        </div>
+                    </div>
+
+                    <div class="proj-arch" aria-hidden="true">
+                        <div class="arch-label">{text.archLabel}</div>
+                        <div class="arch-diagram">
+                            <div class="arch-row">
+                                <div class="arch-node arch-node--top">
+                                    <Fragment
+                                        set:html={techIcons["GitHub Actions"]}
+                                    />
+                                    GitHub Actions
+                                </div>
+                            </div>
+                            <div class="arch-connector arch-connector--v"></div>
+                            <div class="arch-row">
+                                <div class="arch-node arch-node--server">
+                                    <Fragment
+                                        set:html={techIcons["Ubuntu Server"]}
+                                    />
+                                    Ubuntu Server ARM64
+                                </div>
+                            </div>
+                            <div class="arch-connector arch-connector--v"></div>
+                            <div class="arch-row">
+                                <div class="arch-node arch-node--ansible">
+                                    <Fragment set:html={techIcons["Ansible"]} />
+                                    Ansible
+                                </div>
+                            </div>
+                            <div class="arch-connector arch-connector--v"></div>
+                            <div class="arch-row">
+                                <div class="arch-node arch-node--nginx">
+                                    <Fragment set:html={techIcons["Nginx"]} />
+                                    Nginx Reverse Proxy
+                                </div>
+                            </div>
+                            <div class="arch-connector arch-connector--v"></div>
+                            <div class="arch-row">
+                                <div class="arch-node arch-node--docker">
+                                    <Fragment set:html={techIcons["Docker"]} />
+                                    Docker Compose
+                                </div>
+                            </div>
+                            <div class="arch-branch" aria-hidden="true">
+                                <span class="branch-v"></span>
+                                <span class="branch-h"></span>
+                                <span class="branch-v"></span>
+                            </div>
+                            <div
+                                class="arch-row arch-row--multi"
+                                style="gap:0.5rem"
+                            >
+                                <div class="arch-node arch-node--app">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="10"
+                                        height="10"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        ><rect
+                                            x="3"
+                                            y="3"
+                                            width="18"
+                                            height="18"
+                                            rx="2"></rect><path
+                                            d="M3 9h18M9 21V9"></path></svg
+                                    >
+                                    <span
+                                        >AgroSinergia<span
+                                            class="arch-app-stack"
+                                            >Next.js · NestJS · PG · Refine</span
+                                        ></span
+                                    >
+                                </div>
+                                <div
+                                    class="arch-node arch-node--app arch-node--app2"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="10"
+                                        height="10"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        ><rect
+                                            x="3"
+                                            y="3"
+                                            width="18"
+                                            height="18"
+                                            rx="2"></rect><path
+                                            d="M3 9h18M9 21V9"></path></svg
+                                    >
+                                    <span
+                                        >Safe-Tek<span class="arch-app-stack"
+                                            >Astro · Node API · PostgreSQL</span
+                                        ></span
+                                    >
+                                </div>
+                            </div>
+                            <div class="arch-connector arch-connector--v"></div>
+                            <div
+                                class="arch-row arch-row--multi"
+                                style="gap:0.35rem"
+                            >
+                                <div
+                                    class="arch-node arch-node--sm arch-node--sec"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="10"
+                                        height="10"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        ><rect
+                                            x="3"
+                                            y="11"
+                                            width="18"
+                                            height="11"
+                                            rx="2"></rect><path
+                                            d="M7 11V7a5 5 0 0110 0v4"
+                                        ></path></svg
+                                    >
+                                    ZeroTier
+                                </div>
+                                <div
+                                    class="arch-node arch-node--sm arch-node--mon"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="10"
+                                        height="10"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        ><polyline
+                                            points="22 12 18 12 15 21 9 3 6 12 2 12"
+                                        ></polyline></svg
+                                    >
+                                    Uptime Kuma
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- ══ Slide 1: Rocky Linux AIOps Lab ══ -->
+            <article
+                class="carousel__slide carousel__slide--init metal-border"
+                data-glow
+                style="--metal-delay: -5s; --metal-duration: 28s;"
+                data-slide-index="1"
+            >
+                <div class="mini-card__top">
+                    <div
+                        class="mini-badge metal-border-subtle"
+                        style="--metal-delay: -1s; --metal-duration: 24s;"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            ><polygon
+                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                            ></polygon></svg
+                        >
+                        {text.aiopsBadge}
+                    </div>
+                    <a
+                        href="https://github.com/agusm2002/rocky-linux-aiops-lab"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="mini-card__gh-link"
+                        aria-label={text.aiopsAria}
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -613,93 +545,1044 @@ const features = [
                                 d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
                             ></path></svg
                         >
-                        {text.viewRepo}
+                        <span>GitHub</span>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="11"
+                            height="11"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                            ><path d="M7 17L17 7M17 7H7M17 7v10"></path></svg
+                        >
                     </a>
                 </div>
 
-                <!-- Right: app screenshots fan -->
-                <div class="mini-card__visual" aria-hidden="true">
-                    <div class="screens-fan">
-                        <picture>
-                            <source
-                                type="image/avif"
-                                srcset={`${baseUrl}screenshots/chrono-comic.avif?v=20260422`}
-                            />
-                            <source
-                                type="image/webp"
-                                srcset={`${baseUrl}screenshots/chrono-comic.webp?v=20260422`}
-                            />
-                            <img
-                                src={`${baseUrl}screenshots/chrono-comic.png?v=20260422`}
-                                alt={text.chronoAltComic}
-                                class="fan-shot fan-shot--back"
-                                loading="eager"
-                                decoding="async"
-                            />
-                        </picture>
-                        <picture>
-                            <source
-                                type="image/avif"
-                                srcset={`${baseUrl}screenshots/chrono-audio.avif?v=20260422`}
-                            />
-                            <source
-                                type="image/webp"
-                                srcset={`${baseUrl}screenshots/chrono-audio.webp?v=20260422`}
-                            />
-                            <img
-                                src={`${baseUrl}screenshots/chrono-audio.png?v=20260422`}
-                                alt={text.chronoAltAudio}
-                                class="fan-shot fan-shot--mid"
-                                loading="eager"
-                                decoding="async"
-                            />
-                        </picture>
-                        <picture>
-                            <source
-                                type="image/avif"
-                                srcset={`${baseUrl}screenshots/chrono-library.avif?v=20260422`}
-                            />
-                            <source
-                                type="image/webp"
-                                srcset={`${baseUrl}screenshots/chrono-library.webp?v=20260422`}
-                            />
-                            <img
-                                src={`${baseUrl}screenshots/chrono-library.png?v=20260422`}
-                                alt={text.chronoAltLibrary}
-                                class="fan-shot fan-shot--front"
-                                loading="eager"
-                                decoding="async"
-                            />
-                        </picture>
+                <div class="proj-card__body">
+                    <div class="proj-card__left">
+                        <h4 class="mini-card__title">
+                            ITOps Lab de automatización<br />
+                            <span class="proj-title-accent">· AI-Powered</span>
+                        </h4>
+                        <p class="mini-card__desc">{text.aiopsDesc}</p>
+
+                        <ul class="mini-features" role="list">
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><circle cx="12" cy="12" r="10"
+                                    ></circle><polyline
+                                        points="12 6 12 12 16 14"
+                                    ></polyline></svg
+                                >
+                                {text.aiopsFeature1}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><polyline
+                                        points="22 12 18 12 15 21 9 3 6 12 2 12"
+                                    ></polyline></svg
+                                >
+                                {text.aiopsFeature2}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"
+                                    ></path></svg
+                                >
+                                {text.aiopsFeature3}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                                    ></path></svg
+                                >
+                                {text.aiopsFeature4}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"
+                                    ></path></svg
+                                >
+                                {text.aiopsFeature5}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"
+                                    ></path></svg
+                                >
+                                {text.aiopsFeature6}
+                            </li>
+                        </ul>
+
+                        <div class="mini-stack">
+                            {
+                                aiopsStack.map((t) => (
+                                    <span
+                                        class="mini-spill metal-border-subtle"
+                                        style="--metal-delay: -14s; --metal-duration: 22s;"
+                                    >
+                                        {techLogoMap[t] && (
+                                            <img
+                                                src={`/tech-icons/${techLogoMap[t]}`}
+                                                alt=""
+                                                class="tech-logo-mini"
+                                            />
+                                        )}
+                                        {t}
+                                    </span>
+                                ))
+                            }
+                        </div>
+
+                        <div class="mini-cta-row">
+                            <a
+                                href="/aiops-lab"
+                                class="btn btn-primary metal-border mini-cta mini-cta--primary"
+                                style="--metal-delay: -7s; --metal-duration: 24s;"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"
+                                    ></path><path
+                                        d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"
+                                    ></path></svg
+                                >
+                                {text.aiopsDocs}
+                            </a>
+                            <a
+                                href="https://github.com/agusm2002/rocky-linux-aiops-lab"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="btn btn-ghost metal-border mini-cta"
+                                style="--metal-delay: -7s; --metal-duration: 24s;"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="currentColor"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+                                    ></path></svg
+                                >
+                                {text.viewRepo}
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Right: architecture diagram -->
+                    <div class="proj-arch" aria-hidden="true">
+                        <div class="arch-label">Architecture</div>
+                        <div class="arch-diagram aiops-diagram">
+                            <!-- Tier 1: Response -->
+                            <div class="arch-tier">
+                                <div class="arch-tier__label">Response</div>
+                                <div class="arch-tier__nodes">
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/n8n.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name">n8n</span>
+                                    </span>
+                                    <span
+                                        class="arch-tier__node arch-tier__node--accent"
+                                    >
+                                        <img
+                                            src="/tech-icons/openai.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name">LLM</span>
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/discord.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Discord</span
+                                        >
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="arch-tier__connector"></div>
+                            <!-- Tier 2: Observe -->
+                            <div class="arch-tier">
+                                <div class="arch-tier__label">Observe</div>
+                                <div class="arch-tier__nodes">
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/prometheus.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Prometheus</span
+                                        >
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/prometheus.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Alertm.</span
+                                        >
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/loki.png"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name">Loki</span
+                                        >
+                                    </span>
+                                    <span
+                                        class="arch-tier__node arch-tier__node--accent"
+                                    >
+                                        <img
+                                            src="/tech-icons/grafana.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Grafana</span
+                                        >
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="arch-tier__connector"></div>
+                            <!-- Tier 3: Deploy -->
+                            <div class="arch-tier">
+                                <div class="arch-tier__label">Deploy</div>
+                                <div class="arch-tier__nodes">
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/argocd.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >ArgoCD</span
+                                        >
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/jenkins.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Jenkins</span
+                                        >
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/vault.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Vault</span
+                                        >
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="arch-tier__connector"></div>
+                            <!-- Tier 4: Infra -->
+                            <div class="arch-tier">
+                                <div class="arch-tier__label">Infra</div>
+                                <div class="arch-tier__nodes">
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/k3s.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name">k3s</span>
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/ansible.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >Ansible</span
+                                        >
+                                    </span>
+                                    <span class="arch-tier__node">
+                                        <img
+                                            src="/tech-icons/opentofu.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name"
+                                            >OpenTofu</span
+                                        >
+                                    </span>
+                                    <span
+                                        class="arch-tier__node arch-tier__node--accent"
+                                    >
+                                        <img
+                                            src="/tech-icons/oci.svg"
+                                            alt=""
+                                            class="tech-logo"
+                                        />
+                                        <span class="arch-tier__name">OCI</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- ══ Slide 2: Chrono Reader ══ -->
+            <article
+                class="carousel__slide metal-border"
+                data-glow
+                style="--metal-delay: -18s; --metal-duration: 30s;"
+                data-slide-index="2"
+            >
+                <div class="mini-card__top">
+                    <div
+                        class="mini-badge metal-border-subtle"
+                        style="--metal-delay: -1s; --metal-duration: 24s;"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            ><polygon
+                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+                            ></polygon></svg
+                        >
+                        iOS App
+                    </div>
+                    <a
+                        href="https://github.com/agusm2002/chrono-reader"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="mini-card__gh-link"
+                        aria-label={text.chronoAria}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="currentColor"
+                            aria-hidden="true"
+                            ><path
+                                d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+                            ></path></svg
+                        >
+                        <span>GitHub</span>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="11"
+                            height="11"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            aria-hidden="true"
+                            ><path d="M7 17L17 7M17 7H7M17 7v10"></path></svg
+                        >
+                    </a>
+                </div>
+
+                <div class="proj-card__body">
+                    <div class="proj-card__left">
+                        <h4 class="mini-card__title">Chrono Reader</h4>
+                        <p class="mini-card__desc">{text.chronoDesc}</p>
+
+                        <ul class="mini-features" role="list">
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path d="M4 19.5A2.5 2.5 0 016.5 17H20"
+                                    ></path><path
+                                        d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"
+                                    ></path></svg
+                                >
+                                {text.chronoFeature1}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><rect
+                                        x="3"
+                                        y="3"
+                                        width="18"
+                                        height="18"
+                                        rx="2"></rect><path d="M3 9h18M9 21V9"
+                                    ></path></svg
+                                >
+                                {text.chronoFeature2}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path d="M3 18v-6a9 9 0 0118 0v6"
+                                    ></path><path
+                                        d="M21 19a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3zM3 19a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H3z"
+                                    ></path></svg
+                                >
+                                {text.chronoFeature3}
+                            </li>
+                            <li class="mini-feature">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="1.75"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    aria-hidden="true"
+                                    ><path
+                                        d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"
+                                    ></path></svg
+                                >
+                                {text.chronoFeature4}
+                            </li>
+                        </ul>
+
+                        <div class="mini-stack">
+                            {
+                                ["Swift", "SwiftUI"].map((t) => (
+                                    <span
+                                        class="mini-spill metal-border-subtle"
+                                        style="--metal-delay: -14s; --metal-duration: 22s;"
+                                    >
+                                        {techIcons[t] && (
+                                            <Fragment set:html={techIcons[t]} />
+                                        )}
+                                        {t}
+                                    </span>
+                                ))
+                            }
+                        </div>
+
+                        <a
+                            href="https://github.com/agusm2002/chrono-reader"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="btn btn-ghost metal-border mini-cta"
+                            style="--metal-delay: -7s; --metal-duration: 24s;"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                aria-hidden="true"
+                                ><path
+                                    d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"
+                                ></path></svg
+                            >
+                            {text.viewRepo}
+                        </a>
+                    </div>
+
+                    <div class="mini-card__visual">
+                        <video
+                            class="demo-video"
+                            src={`${baseUrl}video/chrono-reader-v3.mp4`}
+                            autoplay
+                            loop
+                            muted
+                            playsinline
+                            aria-label="Chrono Reader demo"></video>
                     </div>
                 </div>
             </article>
         </div>
+
+        <button
+            class="carousel__arrow carousel__arrow--right"
+            id="carouselNext"
+            aria-label={text.nextAria}
+        >
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                ><polyline points="9 18 15 12 9 6"></polyline></svg
+            >
+        </button>
+    </div>
+
+    <div
+        class="carousel__dots reveal"
+        id="carouselDots"
+        role="tablist"
+        aria-label={text.sectionTitle}
+    >
+        <button
+            class="carousel__dot"
+            role="tab"
+            aria-selected="false"
+            aria-label={`${text.slideAria} 1`}
+            data-index="0"></button>
+        <button
+            class="carousel__dot carousel__dot--active"
+            role="tab"
+            aria-selected="true"
+            aria-label={`${text.slideAria} 2`}
+            data-index="1"></button>
+        <button
+            class="carousel__dot"
+            role="tab"
+            aria-selected="false"
+            aria-label={`${text.slideAria} 3`}
+            data-index="2"></button>
     </div>
 </section>
+
+<script>
+    function initCarousel() {
+        const viewport = document.getElementById("carouselViewport");
+        const prevBtn = document.getElementById("carouselPrev");
+        const nextBtn = document.getElementById("carouselNext");
+        const dotsContainer = document.getElementById("carouselDots");
+        if (!viewport) return;
+
+        // Prevent double init on same elements
+        if ((viewport as any).__carouselInit) return;
+        (viewport as any).__carouselInit = true;
+
+        const slides = Array.from(
+            viewport.querySelectorAll<HTMLElement>(".carousel__slide"),
+        );
+        const dots = dotsContainer
+            ? Array.from(
+                  dotsContainer.querySelectorAll<HTMLElement>(".carousel__dot"),
+              )
+            : [];
+        let currentIndex = 1; // Start on Featured Project (slide 1)
+        let maxSlideHeight = 0; // Fixed height for all slides
+
+        // Measure all slides once to find the tallest one
+        function measureMaxHeight() {
+            let maxH = 0;
+            slides.forEach((slide) => {
+                // Temporarily show each slide in flow to measure
+                slide.style.position = "relative";
+                slide.style.opacity = "1";
+                slide.style.transform = "none";
+                slide.style.pointerEvents = "auto";
+                const h = slide.offsetHeight;
+                if (h > maxH) maxH = h;
+                slide.style.position = "";
+                slide.style.opacity = "";
+                slide.style.transform = "";
+                slide.style.pointerEvents = "";
+            });
+            maxSlideHeight = Math.max(maxH, 300);
+            if (viewport) {
+                viewport.style.height = `${maxSlideHeight}px`;
+            }
+        }
+
+        function updateSlides() {
+            // Update state classes on each slide
+            slides.forEach((slide, i) => {
+                const diff = i - currentIndex;
+                const newState =
+                    diff === 0
+                        ? "active"
+                        : diff === -1
+                          ? "prev"
+                          : diff === 1
+                            ? "next"
+                            : diff < -1
+                              ? "far-prev"
+                              : "far-next";
+
+                // Remove all state classes and add the correct one
+                slide.classList.remove(
+                    "carousel__slide--active",
+                    "carousel__slide--init",
+                    "carousel__slide--prev",
+                    "carousel__slide--next",
+                    "carousel__slide--far-prev",
+                    "carousel__slide--far-next",
+                );
+                slide.classList.add(`carousel__slide--${newState}`);
+            });
+
+            // Keep viewport height steady using pre-measured max
+            if (viewport && maxSlideHeight) {
+                viewport.style.height = `${maxSlideHeight}px`;
+            }
+
+            // Update dots
+            dots.forEach((dot, i) => {
+                dot.classList.toggle(
+                    "carousel__dot--active",
+                    i === currentIndex,
+                );
+                dot.setAttribute("aria-selected", String(i === currentIndex));
+            });
+
+            // Update arrow visibility
+            if (prevBtn) {
+                prevBtn.classList.toggle(
+                    "carousel__arrow--hidden",
+                    currentIndex === 0,
+                );
+            }
+            if (nextBtn) {
+                nextBtn.classList.toggle(
+                    "carousel__arrow--hidden",
+                    currentIndex === slides.length - 1,
+                );
+            }
+        }
+
+        function goToSlide(index: number) {
+            currentIndex = Math.max(0, Math.min(index, slides.length - 1));
+            updateSlides();
+        }
+
+        // Click on side cards to navigate
+        slides.forEach((slide: HTMLElement, i: number) => {
+            slide.addEventListener("click", () => {
+                if (i !== currentIndex) {
+                    goToSlide(i);
+                }
+            });
+        });
+
+        // Arrow buttons
+        prevBtn?.addEventListener("click", () => goToSlide(currentIndex - 1));
+        nextBtn?.addEventListener("click", () => goToSlide(currentIndex + 1));
+
+        // Dot navigation
+        dots.forEach((dot: HTMLElement) => {
+            dot.addEventListener("click", () => {
+                const idx = parseInt(dot.dataset.index ?? "0", 10);
+                goToSlide(idx);
+            });
+        });
+
+        // Keyboard navigation
+        viewport.setAttribute("tabindex", "0");
+        viewport.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft") {
+                e.preventDefault();
+                goToSlide(currentIndex - 1);
+            } else if (e.key === "ArrowRight") {
+                e.preventDefault();
+                goToSlide(currentIndex + 1);
+            }
+        });
+
+        // Drag/swipe
+        let isDragging = false;
+        let startX = 0;
+        let hasMoved = false;
+
+        viewport.addEventListener("pointerdown", (e: PointerEvent) => {
+            const target = e.target as HTMLElement;
+            if (target.closest("a") || target.closest("button")) return;
+            isDragging = true;
+            hasMoved = false;
+            startX = e.clientX;
+        });
+
+        viewport.addEventListener("pointermove", (e) => {
+            if (!isDragging) return;
+            const walk = Math.abs(e.clientX - startX);
+            if (walk > 10) hasMoved = true;
+        });
+
+        viewport.addEventListener("pointerup", (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            if (!hasMoved) return;
+            const dx = e.clientX - startX;
+            if (dx > 50) {
+                goToSlide(currentIndex - 1);
+            } else if (dx < -50) {
+                goToSlide(currentIndex + 1);
+            }
+        });
+
+        viewport.addEventListener("pointerleave", () => {
+            isDragging = false;
+        });
+
+        // First measure once, then apply slide states
+        measureMaxHeight();
+        updateSlides();
+
+        // Re-measure after fonts and layout are fully resolved
+        requestAnimationFrame(() => {
+            measureMaxHeight();
+        });
+
+        // Card glow effect - follow cursor
+        slides.forEach((slide) => {
+            slide.addEventListener("mousemove", (e: MouseEvent) => {
+                const rect = slide.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                slide.style.setProperty("--glow-x", `${x.toFixed(1)}%`);
+                slide.style.setProperty("--glow-y", `${y.toFixed(1)}%`);
+            });
+            slide.addEventListener("mouseleave", () => {
+                slide.style.setProperty("--glow-x", "50%");
+                slide.style.setProperty("--glow-y", "50%");
+            });
+        });
+    }
+
+    // Run immediately and on Astro page transitions
+    initCarousel();
+    document.addEventListener("astro:page-load", initCarousel);
+</script>
 
 <style>
     .proj__sub {
         color: var(--text-muted);
         font-size: var(--text-md);
         max-width: 52ch;
-        margin-bottom: 2.5rem;
+        margin-bottom: 2rem;
     }
 
-    /* ── Main card ── */
-    .proj-card {
-        background: #0e0e0e;
+    /* ═══════════════════════════════════════
+       CAROUSEL
+    ═══════════════════════════════════════ */
+    .carousel-wrapper {
+        position: relative;
+        padding-inline: 1.5rem;
+        overflow: hidden;
+    }
+
+    .carousel__viewport {
+        position: relative;
+        width: 100%;
+        max-width: 1200px;
+        margin-inline: auto;
+        transition: height 0.55s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .carousel__slide {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        width: 92%;
+        max-width: 880px;
+        margin-inline: auto;
+        background: rgba(14, 14, 14, 0.88);
+        backdrop-filter: blur(14px) saturate(1.1);
+        -webkit-backdrop-filter: blur(14px) saturate(1.1);
         border: none;
         border-radius: 1rem;
         overflow: hidden;
-        transition: box-shadow 0.25s;
+        transition:
+            transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+            opacity 0.45s ease;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 1;
+        pointer-events: none;
+    }
+    /* Active slide visible before JS initializes */
+    .carousel__slide--init {
+        transform: translate(0, -50%);
+        opacity: 1;
+        z-index: 4;
+        pointer-events: auto;
+        cursor: default;
+    }
+    .carousel__slide--active {
+        transform: translate(0, -50%);
+        opacity: 1;
+        z-index: 4;
+        pointer-events: auto;
+        cursor: default;
     }
 
-    .proj-card:hover {
-        box-shadow: none;
+    .carousel__slide--prev {
+        transform: translate(calc(-55%), -50%);
+        opacity: 0.4;
+        z-index: 2;
+        pointer-events: auto;
+        cursor: pointer;
     }
 
-    /* ── Header ── */
+    .carousel__slide--next {
+        transform: translate(55%, -50%);
+        opacity: 0.4;
+        z-index: 2;
+        pointer-events: auto;
+        cursor: pointer;
+    }
+
+    .carousel__slide--far-prev {
+        transform: translate(-110%, -50%);
+        opacity: 0;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    .carousel__slide--far-next {
+        transform: translate(110%, -50%);
+        opacity: 0;
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    @media (min-width: 900px) {
+        .carousel__slide {
+            width: 85%;
+            max-width: 960px;
+        }
+        .carousel__slide--prev {
+            transform: translate(calc(-50%), -50%);
+        }
+        .carousel__slide--next {
+            transform: translate(50%, -50%);
+        }
+    }
+
+    /* ═══════════════════════════════════════
+       ARROWS
+    ═══════════════════════════════════════ */
+    .carousel__arrow {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.75rem;
+        height: 2.75rem;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(14, 14, 14, 0.9);
+        color: var(--green-300);
+        cursor: pointer;
+        transition:
+            background 0.2s,
+            border-color 0.2s,
+            color 0.2s,
+            opacity 0.3s;
+    }
+    .carousel__arrow--left {
+        left: 1rem;
+    }
+    .carousel__arrow--right {
+        right: 1rem;
+    }
+
+    .carousel__arrow:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.25);
+        color: var(--green-300);
+    }
+
+    .carousel__arrow--hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* ═══════════════════════════════════════
+       DOTS
+    ═══════════════════════════════════════ */
+    .carousel__dots {
+        display: flex;
+        justify-content: center;
+        gap: 0.6rem;
+        margin-top: 2.25rem;
+    }
+
+    .carousel__dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: transparent;
+        cursor: pointer;
+        padding: 0;
+        transition:
+            background 0.25s,
+            border-color 0.25s,
+            transform 0.25s;
+    }
+
+    .carousel__dot:hover {
+        border-color: rgba(255, 255, 255, 0.4);
+    }
+
+    .carousel__dot--active {
+        background: var(--green-400);
+        border-color: var(--green-400);
+        transform: scale(1.3);
+    }
+
+    /* ═══════════════════════════════════════
+       CARD GLOW ON HOVER
+    ═══════════════════════════════════════ */
+    [data-glow]::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: radial-gradient(
+            circle at var(--glow-x, 50%) var(--glow-y, 50%),
+            rgba(255, 255, 255, 0.06),
+            transparent 55%
+        );
+        pointer-events: none;
+        z-index: 5;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+    }
+
+    [data-glow]:hover::after {
+        opacity: 1;
+    }
+
+    /* ═══════════════════════════════════════
+       CARD HEADER (shared)
+    ═══════════════════════════════════════ */
     .proj-card__header {
         display: flex;
         align-items: center;
@@ -731,6 +1614,7 @@ const features = [
         font-family: var(--font-mono);
         font-size: var(--text-sm);
         color: var(--text-muted);
+        text-decoration: none;
         transition:
             color 0.18s,
             gap 0.18s;
@@ -741,16 +1625,64 @@ const features = [
         gap: 0.55rem;
     }
 
-    /* ── Body ── */
+    /* ═══════════════════════════════════════
+       MINI CARD TOP BAR (for Chrono slide)
+    ═══════════════════════════════════════ */
+    .mini-card__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.75rem;
+        border-bottom: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .mini-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-400);
+        background: transparent;
+        border: none;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .mini-card__gh-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        color: var(--text-dim);
+        text-decoration: none;
+        transition:
+            color 0.18s,
+            gap 0.18s;
+    }
+
+    .mini-card__gh-link:hover {
+        color: var(--green-300);
+        gap: 0.5rem;
+    }
+
+    /* ═══════════════════════════════════════
+       CARD BODY (shared grid)
+    ═══════════════════════════════════════ */
     .proj-card__body {
         display: grid;
-        grid-template-columns: 1fr 360px;
+        grid-template-columns: 1fr 380px;
         gap: 0;
         align-items: stretch;
+        min-height: 0;
     }
 
     .proj-card__left {
-        padding: 2rem 2.5rem 2.5rem;
+        padding: 1.75rem 2rem 2rem;
         border-right: 1px solid var(--border);
         display: flex;
         flex-direction: column;
@@ -762,7 +1694,7 @@ const features = [
         font-weight: 700;
         color: var(--green-50);
         line-height: 1.2;
-        margin-bottom: 1rem;
+        margin-bottom: 0.75rem;
     }
 
     .proj-title-accent {
@@ -772,8 +1704,8 @@ const features = [
     .proj-card__desc {
         color: var(--text-muted);
         font-size: var(--text-md);
-        line-height: 1.75;
-        margin-bottom: 1.5rem;
+        line-height: 1.7;
+        margin-bottom: 1.25rem;
     }
 
     .proj-cta-row {
@@ -794,18 +1726,16 @@ const features = [
         border: 1px dashed rgba(255, 255, 255, 0.1);
         padding: 0.35rem 0.85rem;
         border-radius: 0.5rem;
-        /* visually nudge down a bit to align with the button */
         transform: translateY(3px);
-        margin-bottom: 0; /* moved inline, avoid extra vertical gap */
     }
 
-    /* ── Feature list ── */
+    /* Feature list */
     .proj-features {
         list-style: none;
         display: flex;
         flex-direction: column;
-        gap: 0.55rem;
-        margin-bottom: 1.75rem;
+        gap: 0.45rem;
+        margin-bottom: 1.25rem;
     }
 
     .proj-feature {
@@ -828,12 +1758,12 @@ const features = [
         color: var(--green-600);
     }
 
-    /* ── Stack pills ── */
+    /* Stack pills */
     .proj-stack {
         display: flex;
         flex-wrap: wrap;
         gap: 0.375rem;
-        margin-bottom: 1.75rem;
+        margin-bottom: 1.25rem;
     }
 
     .spill {
@@ -850,17 +1780,15 @@ const features = [
         transition: color 0.15s;
     }
 
-    .proj-card:hover .spill:hover {
-        color: var(--green-300);
-    }
-
     .proj-cta {
         width: fit-content;
     }
 
-    /* ── Architecture diagram ── */
+    /* ═══════════════════════════════════════
+       ARCHITECTURE DIAGRAM
+    ═══════════════════════════════════════ */
     .proj-arch {
-        padding: 1.75rem;
+        padding: 1.5rem 1.75rem;
         display: flex;
         flex-direction: column;
         align-items: stretch;
@@ -873,7 +1801,7 @@ const features = [
         color: var(--text-dim);
         letter-spacing: 0.16em;
         text-transform: uppercase;
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.5rem;
         flex-shrink: 0;
     }
 
@@ -911,11 +1839,6 @@ const features = [
         transition:
             background 0.2s,
             border-color 0.2s;
-    }
-
-    .proj-card:hover .arch-node {
-        background: rgba(255, 255, 255, 0.06);
-        border-color: rgba(255, 255, 255, 0.12);
     }
 
     .arch-node--top {
@@ -986,7 +1909,7 @@ const features = [
         display: flex;
         align-items: flex-start;
         justify-content: center;
-        height: 1.4rem;
+        height: 1.1rem;
         position: relative;
         width: 100%;
     }
@@ -1007,9 +1930,9 @@ const features = [
 
     .arch-connector--v {
         width: 1px;
-        height: 1.25rem;
+        height: 1rem;
         background: rgba(255, 255, 255, 0.1);
-        margin: 0.15rem auto;
+        margin: 0.1rem auto;
     }
 
     .arch-connector--h {
@@ -1024,121 +1947,151 @@ const features = [
         background: rgba(255, 255, 255, 0.1);
     }
 
-    @media (max-width: 900px) {
-        .proj-card__body {
-            grid-template-columns: 1fr;
-        }
-        .proj-card__left {
-            border-right: none;
-            border-bottom: 1px solid var(--border);
-            padding: 1.5rem;
-        }
-        .proj-arch {
-            padding: 1.5rem;
-        }
-    }
-
-    /* ──────────────────────────────────────
-     Other projects section
-  ────────────────────────────────────── */
-    .other-projs {
-        margin-top: 3.5rem;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1.25rem;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .other-projs__title {
-        font-size: var(--text-xl);
-        font-weight: 600;
-        color: var(--green-50);
-        margin-bottom: 0.4rem;
-    }
-
-    .other-projs__sub {
-        font-size: var(--text-md);
-        color: var(--text-muted);
-        max-width: 62ch;
-        line-height: 1.6;
-    }
-
-    /* mini-cards grid — one column for now, easy to extend */
-    .mini-cards {
+    /* ═══════════════════════════════════════
+       AIOPS TIERED DIAGRAM
+    ═══════════════════════════════════════ */
+    .aiops-diagram {
         display: flex;
         flex-direction: column;
-        gap: 1rem;
-    }
-
-    /* ── Mini card ── */
-    .mini-card {
-        display: grid;
-        grid-template-columns: 1fr 330px;
+        justify-content: center;
+        flex: 1;
         gap: 0;
-        background: #0e0e0e;
-        border: none;
-        border-radius: 0.875rem;
-        overflow: hidden;
-        transition: box-shadow 0.25s;
+        width: 100%;
+        padding: 0.25rem 0;
     }
 
-    .mini-card:hover {
-        box-shadow: none;
-    }
-
-    /* ── Mini card content (left) ── */
-    .mini-card__content {
-        padding: 1.75rem 2rem 2rem;
-        border-right: 1px solid var(--border);
+    .arch-tier {
         display: flex;
         flex-direction: column;
-        gap: 0;
+        gap: 0.45rem;
+        padding: 0.55rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 0.5rem;
+        flex: 1;
+        min-height: 0;
+        width: 100%;
     }
 
-    .mini-card__top {
+    .arch-tier__nodes {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 0.75rem;
-    }
-
-    .mini-badge {
-        display: inline-flex;
-        align-items: center;
+        flex-wrap: wrap;
         gap: 0.35rem;
+        align-items: center;
+        flex: 1;
+        align-content: center;
+    }
+
+    .arch-tier__label {
         font-family: var(--font-mono);
-        font-size: var(--text-xs);
-        color: var(--green-400);
-        background: transparent;
-        border: none;
-        padding: 0.2rem 0.6rem;
-        border-radius: 999px;
-        letter-spacing: 0.08em;
+        font-size: var(--text-2xs);
+        color: var(--green-500);
+        letter-spacing: 0.12em;
         text-transform: uppercase;
+        flex-shrink: 0;
     }
 
-    .mini-card__gh-link {
-        display: inline-flex;
+    .arch-tier__nodes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
         align-items: center;
+        justify-content: center;
+        flex: 1;
+        align-content: center;
+    }
+
+    .arch-tier__node {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
         gap: 0.35rem;
-        font-family: var(--font-mono);
-        font-size: var(--text-sm);
-        color: var(--text-dim);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        padding: 0.5rem 0.35rem;
+        border-radius: 0.5rem;
+        min-width: 56px;
         transition:
-            color 0.18s,
-            gap 0.18s;
+            background 0.2s,
+            border-color 0.2s;
     }
 
-    .mini-card__gh-link:hover {
+    .arch-tier__node--accent {
+        border-color: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.07);
+    }
+
+    .arch-tier__name {
+        font-family: var(--font-mono);
+        font-size: 0.6rem;
+        color: var(--text-dim);
+        line-height: 1;
+        text-align: center;
+    }
+
+    .arch-tier__node--accent .arch-tier__name {
         color: var(--green-300);
-        gap: 0.5rem;
     }
 
+    .tech-logo {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        opacity: 0.9;
+    }
+
+    .arch-tier__node .tech-logo {
+        filter: brightness(0) invert(1);
+    }
+
+    .arch-tier__node--accent .tech-logo {
+        filter: brightness(0) invert(1);
+    }
+
+    .arch-tier__connector {
+        position: relative;
+        height: 1.4rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .arch-tier__connector::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: linear-gradient(
+            to bottom,
+            rgba(255, 255, 255, 0.04),
+            rgba(255, 255, 255, 0.18),
+            rgba(255, 255, 255, 0.04)
+        );
+    }
+
+    .arch-tier__connector::after {
+        content: "";
+        position: absolute;
+        bottom: 0.05rem;
+        width: 5px;
+        height: 5px;
+        border-right: 1.5px solid rgba(255, 255, 255, 0.22);
+        border-bottom: 1.5px solid rgba(255, 255, 255, 0.22);
+        transform: rotate(45deg);
+    }
+
+    /* ═══════════════════════════════════════
+       MINI CARD ELEMENTS (Chrono)
+    ═══════════════════════════════════════ */
     .mini-card__title {
-        font-size: var(--text-2xl);
+        font-size: clamp(1.35rem, 2.5vw, 1.7rem);
         font-weight: 700;
         color: var(--green-50);
         margin-bottom: 0.65rem;
         letter-spacing: -0.01em;
+        line-height: 1.15;
     }
 
     .mini-card__desc {
@@ -1148,13 +2101,6 @@ const features = [
         margin-bottom: 1.1rem;
     }
 
-    .mini-mono {
-        font-family: var(--font-mono);
-        font-size: 0.82em;
-        color: var(--green-400);
-    }
-
-    /* mini features list */
     .mini-features {
         list-style: none;
         display: flex;
@@ -1178,7 +2124,6 @@ const features = [
         color: var(--green-500);
     }
 
-    /* mini stack pills */
     .mini-stack {
         display: flex;
         flex-wrap: wrap;
@@ -1200,11 +2145,14 @@ const features = [
         transition: color 0.15s;
     }
 
-    .mini-card:hover .mini-spill:hover {
-        color: var(--green-300);
+    .tech-logo-mini {
+        width: 13px;
+        height: 13px;
+        flex-shrink: 0;
+        filter: brightness(0) invert(1);
+        opacity: 0.85;
     }
 
-    /* ghost button for mini CTA */
     .btn-ghost {
         display: inline-flex;
         align-items: center;
@@ -1233,140 +2181,71 @@ const features = [
         margin-top: 0.3rem;
     }
 
-    /* ── App screenshots fan (right visual) ── */
+    .mini-cta-row {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-top: 0.3rem;
+    }
+
+    .mini-cta--primary {
+        background: rgba(255, 255, 255, 0.18);
+        color: #fff;
+        font-weight: 600;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        box-shadow: 0 0 14px rgba(255, 255, 255, 0.08);
+    }
+
+    .mini-cta--primary:hover {
+        background: rgba(255, 255, 255, 0.26);
+        border-color: rgba(255, 255, 255, 0.5);
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.14);
+        color: #fff;
+    }
+
+    /* Demo video */
     .mini-card__visual {
         display: grid;
         place-items: center;
         align-self: stretch;
-        padding: 0.75rem 0.65rem;
+        padding: 0;
         background: rgba(10, 10, 10, 0.5);
         overflow: hidden;
     }
 
-    .screens-fan {
-        position: relative;
-        width: 258px;
-        height: 404px;
-        will-change: transform;
-        animation: fan-sway 12s ease-in-out infinite;
+    .demo-video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
     }
 
-    .fan-shot {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 176px;
-        border-radius: 14px;
-        box-shadow:
-            0 8px 32px rgba(0, 0, 0, 0.55),
-            0 0 0 1px rgba(255, 255, 255, 0.08);
-        transition: box-shadow 0.35s ease;
-        will-change: transform;
-        user-select: none;
-        pointer-events: none;
-    }
-
-    /* back: tilted right, pushed back */
-    .fan-shot--back {
-        transform: translate(-34%, -46%) rotate(9deg) scale(0.9);
-        opacity: 0.7;
-        z-index: 1;
-        animation: fan-back-rotate 10.5s ease-in-out infinite;
-    }
-
-    /* mid: slightly tilted */
-    .fan-shot--mid {
-        transform: translate(-50%, -50%) rotate(3deg) scale(0.95);
-        opacity: 0.86;
-        z-index: 2;
-        animation: fan-mid-rotate 9.5s ease-in-out infinite;
-    }
-
-    /* front: straight, on top */
-    .fan-shot--front {
-        transform: translate(-66%, -53%) rotate(-3deg);
-        opacity: 1;
-        z-index: 3;
-        animation: fan-front-rotate 8.5s ease-in-out infinite;
-    }
-
-    .mini-card:hover .fan-shot {
-        box-shadow:
-            0 12px 36px rgba(0, 0, 0, 0.58),
-            0 0 0 1px rgba(255, 255, 255, 0.14);
-    }
-
-    @keyframes fan-sway {
-        0%,
-        100% {
-            transform: translateY(0) rotate(-0.8deg);
-        }
-        50% {
-            transform: translateY(-7px) rotate(1.1deg);
-        }
-    }
-
-    @keyframes fan-back-rotate {
-        0%,
-        100% {
-            transform: translate(-34%, -46%) rotate(9deg) scale(0.9);
-        }
-        50% {
-            transform: translate(calc(-34% + 8px), calc(-46% - 10px))
-                rotate(14deg) scale(0.91);
-        }
-    }
-
-    @keyframes fan-mid-rotate {
-        0%,
-        100% {
-            transform: translate(-50%, -50%) rotate(3deg) scale(0.95);
-        }
-        50% {
-            transform: translate(calc(-50% + 5px), calc(-50% - 8px))
-                rotate(8deg) scale(0.96);
-        }
-    }
-
-    @keyframes fan-front-rotate {
-        0%,
-        100% {
-            transform: translate(-66%, -53%) rotate(-3deg);
-        }
-        50% {
-            transform: translate(calc(-66% - 4px), calc(-53% - 7px))
-                rotate(-8deg);
-        }
-    }
-
-    /* responsive */
-    @media (max-width: 700px) {
-        .mini-card {
+    /* ═══════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════ */
+    @media (max-width: 900px) {
+        .proj-card__body {
             grid-template-columns: 1fr;
         }
-        .mini-card__content {
+        .proj-card__left {
             border-right: none;
             border-bottom: 1px solid var(--border);
             padding: 1.5rem;
         }
-        .mini-card__visual {
-            padding: 1.4rem 1rem;
+        .proj-arch {
+            padding: 1.5rem;
         }
-        .screens-fan {
-            width: 222px;
-            height: 336px;
+
+        .carousel__arrow {
+            width: 2.25rem;
+            height: 2.25rem;
         }
-        .fan-shot {
-            width: 140px;
-        }
-        .fan-shot--back {
-            transform: translate(-36%, -46%) rotate(9deg) scale(0.9);
-        }
-        .fan-shot--mid {
-            transform: translate(-50%, -50%) rotate(3deg) scale(0.95);
-        }
-        .fan-shot--front {
-            transform: translate(-66%, -53%) rotate(-3deg);
+    }
+
+    @media (max-width: 700px) {
+        .carousel__arrow {
+            width: 2rem;
+            height: 2rem;
         }
     }
 </style>

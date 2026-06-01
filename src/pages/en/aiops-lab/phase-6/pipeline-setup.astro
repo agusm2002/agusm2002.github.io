@@ -1,0 +1,135 @@
+---
+import DocsLayout from "../../../../layouts/DocsLayout.astro";
+
+const pipelineStages = [
+    { stage: "Lint YAML", tool: "yamllint", desc: "Valida la sintaxis de todos los archivos YAML en k3s/manifests/. Detecta errores de indentacion, duplicados y valores invalidos antes del deploy.", onFail: "El pipeline se detiene. n8n recibe una notificacion de fallo." },
+    { stage: "Lint Ansible", tool: "ansible-lint", desc: "Ejecuta ansible-lint sobre el directorio ansible/. Verifica que los playbooks y roles sigan las mejores practicas de Ansible.", onFail: "El pipeline se detiene. Se reporta el archivo y la linea del error." },
+    { stage: "Validate OpenTofu", tool: "tofu validate", desc: "Ejecuta tofu validate en tofu/local/. Verifica que la sintaxis HCL sea correcta y que las referencias entre recursos sean validas.", onFail: "El pipeline se detiene. OpenTofu reporta el error de sintaxis." },
+    { stage: "Validate K8s Manifests", tool: "kubectl --dry-run", desc: "Ejecuta kubectl apply --dry-run=client sobre k3s/manifests/. Verifica que los manifiestos sean validos sin aplicarlos al cluster.", onFail: "El pipeline se detiene. kubectl reporta el recurso y el campo invalido." },
+];
+
+const jfCode = [
+    "pipeline {",
+    "    agent {",
+    "        kubernetes {",
+    "            yaml \"\"\"",
+    "                apiVersion: v1",
+    "                kind: Pod",
+    "                spec:",
+    "                  containers:",
+    "                  - name: tools",
+    "                    image: alpine/k8s:1.29.2",
+    "                    command: [cat]",
+    "                    tty: true",
+    "            \"\"\"",
+    "        }",
+    "    }",
+    "    stages {",
+    "        stage(\"Lint YAML\") {",
+    "            steps { container(\"tools\") { sh \"yamllint k3s/manifests/\" } }",
+    "        }",
+    "        stage(\"Lint Ansible\") {",
+    "            steps { container(\"tools\") { sh \"ansible-lint ansible/\" } }",
+    "        }",
+    "        stage(\"Validate OpenTofu\") {",
+    "            steps { container(\"tools\") { sh \"tofu validate tofu/\" } }",
+    "        }",
+    "        stage(\"Validate K8s Manifests\") {",
+    "            steps { container(\"tools\") { sh \"kubectl --dry-run=client apply -f k3s/manifests/\" } }",
+    "        }",
+    "    }",
+    "}",
+].join("\n");
+
+const postBlockCode = [
+    "post {",
+    "    failure {",
+    "        sh \"\"\"",
+    "            curl -X POST http://n8n.aiops.svc.cluster.local:5678/webhook/jenkins-failure \\\\",
+    '              -H "Content-Type: application/json" \\\\',
+    "              -d \u0027{\"build\": \"${BUILD_NUMBER}\", \"job\": \"${JOB_NAME}\"}\u0027",
+    "        \"\"\"",
+    "    }",
+    "}",
+].join("\n");
+---
+
+<DocsLayout
+    title="Pipeline Setup - ITOps Automation Lab"
+    description="Phase 6 del Rocky Linux ITOps Automation Lab: configuracion del Jenkinsfile con stages de linting, validacion y notificacion a n8n en caso de fallo."
+    activePage="pipeline-setup"
+    lang="en"
+    prev={{ label: "Agentes Dinamicos", href: "/en/aiops-lab/phase-6/dynamic-agents" }}
+    next={{ label: "Jenkins vs GitHub Actions", href: "/en/aiops-lab/phase-6/jenkins-vs-gh-actions" }}
+>
+    <div class="docs-page">
+        <div class="f6-hero"><div class="f6-hero__top"><div class="f6-hero__badge">Phase 6.2</div><span class="f6-hero__time">Jenkinsfile</span></div><h1 class="f6-hero__title">Pipeline Setup<span class="f6-hero__accent"> · Jenkinsfile</span></h1><p class="f6-hero__subtitle">El pipeline declarativo que Jenkins ejecuta en cada push al repositorio. Cuatro stages validan YAML, Ansible, OpenTofu y manifiestos de Kubernetes. Si algo falla, n8n recibe una notificacion para procesarla con LLM.</p></div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">01</span><h2 class="overview-h2">Los Cuatro Stages</h2></div>
+            <p class="overview-lead">Cada stage valida una parte distinta del proyecto. Si un stage falla, el pipeline se detiene inmediatamente y ejecuta el bloque post para notificar a n8n.</p>
+            <div class="stages-list">
+                {pipelineStages.map((s) => (
+                    <div class="stage-card"><div class="stage-card__header"><span class="stage-card__name">{s.stage}</span><code class="stage-card__tool">{s.tool}</code></div><div class="stage-card__desc">{s.desc}</div><div class="stage-card__fail">{s.onFail}</div></div>
+                ))}
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">02</span><h2 class="overview-h2">El Jenkinsfile Completo</h2></div>
+            <p class="overview-lead">El archivo Jenkinsfile en la raiz del repositorio define todo el pipeline. Cada stage usa container('tools') para ejecutarse dentro del contenedor del agente Kubernetes.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">Jenkinsfile</span></div>
+                <pre><code>{jfCode}</code></pre>
+            </div>
+        </div>
+
+        <div class="overview-section">
+            <div class="section-header"><span class="section-num">03</span><h2 class="overview-h2">Notificacion de Fallos a n8n</h2></div>
+            <p class="overview-lead">El bloque post con la condicion failure se ejecuta solo si el pipeline falla. Envia un webhook a n8n con los detalles del build fallido. n8n puede procesar este evento con LLM y notificar a Discord.</p>
+            <div class="code-block"><div class="code-block__header"><span class="code-block__file">Jenkinsfile — post block</span></div>
+                <pre><code>{postBlockCode}</code></pre>
+            </div>
+            <p class="overview-text">Las variables BUILD_NUMBER, JOB_NAME, BUILD_DURATION y BUILD_URL son variables de entorno que Jenkins inyecta automaticamente en cada build. El webhook de n8n recibe estos datos y puede decidir si notificar a Discord, abrir un issue en GitHub o simplemente registrar el evento.</p>
+        </div>
+
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card"><div class="cta-card__content"><h3 class="cta-card__title">Siguiente: Jenkins vs GitHub Actions</h3><p class="cta-card__desc">La ultima pagina de la Phase 6 compara los dos enfoques de CI/CD y explica por que el portfolio cubre ambos deliberadamente.</p></div><a href="/en/aiops-lab/phase-6/jenkins-vs-gh-actions" class="cta-card__btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>Jenkins vs Actions</a></div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+    .f6-hero { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.875rem; padding: 1.75rem; margin-bottom: 3rem; }
+    .f6-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f6-hero__badge { display: inline-flex; align-items: center; gap: 0.4rem; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300); padding: 0.35rem 0.7rem; border-radius: 0.4rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border); }
+    .f6-hero__time { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim); padding: 0.35rem 0.65rem; border-radius: 0.4rem; border: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+    .f6-hero__title { font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem; }
+    .f6-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f6-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+    .overview-section { margin-bottom: 3rem; } .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .overview-text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.65; margin-bottom: 1rem; }
+    .stages-list { display: flex; flex-direction: column; gap: 0.35rem; }
+    .stage-card { background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.55rem 0.8rem; }
+    .stage-card__header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+    .stage-card__name { font-family: var(--font-display); font-size: var(--text-sm); font-weight: 600; color: var(--green-50); }
+    .stage-card__tool { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); background: rgba(255,255,255,0.04); padding: 0.1rem 0.35rem; border-radius: 0.2rem; border: 1px solid var(--border); }
+    .stage-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.45; margin-bottom: 0.15rem; }
+    .stage-card__fail { font-size: var(--text-xs); color: var(--text-dim); line-height: 1.4; }
+    .code-block { background: #0a0a0a; border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .code-block__header { display: flex; align-items: center; padding: 0.45rem 0.85rem; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--border); }
+    .code-block__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .code-block pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .code-block code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+    .cta-card { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; background: rgba(255,255,255,0.015); border: 1px solid var(--border); border-radius: 0.75rem; }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn { display: inline-flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0; transition: background 0.2s, border-color 0.2s; }
+    .cta-card__btn:hover { background: rgba(255,255,255,0.08); border-color: var(--border-hover); }
+    @media (max-width: 600px) { .cta-card { flex-direction: column; align-items: flex-start; } }
+</style>

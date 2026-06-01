@@ -1,0 +1,641 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+
+const devVsProd = [
+    { aspect: "Almacenamiento", dev: "En memoria — se pierde al reiniciar el pod", prod: "Raft o Consul — persistente en disco" },
+    { aspect: "Unseal", dev: "Automático al iniciar", prod: "Manual — 3 de 5 unseal keys requeridas" },
+    { aspect: "Root token", dev: "Fijado por env var (dev-root-token)", prod: "Generado en vault operator init" },
+    { aspect: "TLS", dev: "Deshabilitado — HTTP plano", prod: "Obligatorio — certificados TLS" },
+    { aspect: "Audit logging", dev: "Deshabilitado", prod: "Recomendado — file/socket/syslog" },
+    { aspect: "HA", dev: "Single replica — no soporta clustering", prod: "Múltiples nodos con Raft leader election" },
+];
+
+const twoAgents = [
+    {
+        name: "Vault Agent Injector",
+        where: "Kubernetes — admission webhook",
+        how: "Intercepta creación de pods con annotations vault.hashicorp.com/agent-inject. Modifica el pod spec para agregar un init container que recupera secrets de Vault.",
+        useWhen: "Pods en k3s que necesitan secrets de Vault en runtime. El desarrollador solo agrega annotations al Deployment — el Injector hace el resto.",
+    },
+    {
+        name: "Vault Agent (systemd)",
+        where: "Sistema operativo — servicio systemd",
+        how: "Binario vault ejecutándose como daemon en la VM. Se autentica con AppRole y cachea tokens y secrets en disco. Renderiza templates HCL como archivos locales.",
+        useWhen: "Procesos del host fuera de k3s: scripts de monitoreo, tareas cron, backups. En modo dev tiene utilidad limitada — es referencia para producción.",
+    },
+];
+
+const injectionFlow = [
+    { step: "1", actor: "Developer", action: "Agrega annotations de Vault al pod spec (vault.hashicorp.com/agent-inject: \"true\")" },
+    { step: "2", actor: "kubectl", action: "Envía el Deployment a la API de Kubernetes" },
+    { step: "3", actor: "API Server", action: "Envía AdmissionReview al Vault Agent Injector (Mutating Admission Webhook)" },
+    { step: "4", actor: "Injector", action: "Lee las annotations del pod. Modifica el spec: agrega volumen compartido + init container (vault-agent-init)" },
+    { step: "5", actor: "API Server", action: "Crea el pod modificado con el init container inyectado" },
+    { step: "6", actor: "vault-agent-init", action: "Se autentica con Vault usando el ServiceAccount token del pod. Recupera los secrets. Los escribe en archivos del volumen compartido." },
+    { step: "7", actor: "App Container", action: "Arranca y lee los secrets desde los archivos en /vault/secrets/" },
+];
+
+const vaultAuthMethods = [
+    { method: "Kubernetes", who: "Pods", how: "El pod presenta su ServiceAccount token. Vault valida el token contra la API de Kubernetes. Si es válido, Vault asigna una política al pod según su ServiceAccount.", used: true },
+    { method: "AppRole", who: "Máquinas/procesos", how: "Role ID (identidad pública) + Secret ID (credencial secreta). Ideal para servicios fuera de Kubernetes. El Vault Agent de systemd usa este método.", used: true },
+    { method: "Token", who: "Humanos/root", how: "Token directo generado por Vault. El root token (dev-root-token) usa este método. Los pods nunca deberían usar tokens directos.", used: false },
+];
+---
+
+<DocsLayout
+    title="HashiCorp Vault Overview - ITOps Automation Lab"
+    description="Fase 3 del Rocky Linux ITOps Automation Lab: HashiCorp Vault self-hosted en k3s — secrets management, Vault Agent Injector, modos dev vs producción y flujo de inyección de secrets."
+    activePage="vault-overview"
+    prev={{
+        label: "IaC vs Configuration Management",
+        href: "/aiops-lab/phase-2/iac-vs-config",
+    }}
+    next={{
+        label: "Vault Agent Injector",
+        href: "/aiops-lab/phase-3/vault-agent-injector",
+    }}
+>
+    <div class="docs-page">
+        <!-- ═══ Hero ═══ -->
+        <div class="f3-hero">
+            <div class="f3-hero__top">
+                <div class="f3-hero__badge">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    Fase 3
+                </div>
+                <span class="f3-hero__time">HashiCorp Vault 1.16</span>
+            </div>
+
+            <h1 class="f3-hero__title">
+                HashiCorp Vault
+                <span class="f3-hero__accent">· Secrets Management</span>
+            </h1>
+            <p class="f3-hero__subtitle">
+                La Fase 3 introduce secrets management con HashiCorp Vault
+                self-hosted en k3s. Vault centraliza el almacenamiento y
+                acceso a credenciales, elimina secrets hardcodeados de los
+                manifiestos y permite rotación sin redeploy. En el lab corre en
+                modo dev — en Oracle Cloud se reemplaza por OCI Vault.
+            </p>
+        </div>
+
+        <!-- ═══ Why Vault ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">01</span>
+                <h2 class="overview-h2">¿Por qué Vault?</h2>
+            </div>
+            <p class="overview-lead">
+                Sin Vault, los secrets viven en ConfigMaps, variables de
+                entorno o — peor — hardcodeados en los manifiestos. Con Vault,
+                los secrets existen en un solo lugar, se acceden con
+                autenticación y autorización, se auditan y se pueden rotar sin
+                tocar los Deployments.
+            </p>
+
+            <div class="why-grid">
+                <div class="why-card">
+                    <div class="why-card__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                    </div>
+                    <div class="why-card__title">Centralización</div>
+                    <div class="why-card__desc">Un solo source of truth para todos los secrets del stack. No más credenciales dispersas en ConfigMaps, env vars o archivos sueltos.</div>
+                </div>
+                <div class="why-card">
+                    <div class="why-card__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <div class="why-card__title">Sin hardcoding</div>
+                    <div class="why-card__desc">Los pods reciben secrets en runtime via inyección. El Deployment no contiene credenciales — solo annotations declarando qué secrets necesita.</div>
+                </div>
+                <div class="why-card">
+                    <div class="why-card__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>
+                    </div>
+                    <div class="why-card__title">Rotación sin redeploy</div>
+                    <div class="why-card__desc">Cambiar una contraseña en Vault no requiere reiniciar pods. El Vault Agent renueva el secreto y la app lo lee del archivo actualizado.</div>
+                </div>
+                <div class="why-card">
+                    <div class="why-card__icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    </div>
+                    <div class="why-card__title">Auditabilidad</div>
+                    <div class="why-card__desc">Cada acceso a un secret queda registrado. En producción, Vault envía audit logs a un backend externo para compliance.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Dev Mode ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">02</span>
+                <h2 class="overview-h2">Modo Dev vs Producción</h2>
+            </div>
+            <p class="overview-lead">
+                El lab usa Vault en modo dev (<code>vault server -dev</code>).
+                Es la forma más rápida de tener Vault corriendo, pero no es
+                apto para producción. La tabla documenta exactamente qué cambia
+                entre ambos modos — entender estas diferencias es parte del
+                valor del proyecto.
+            </p>
+
+            <div class="dv-table">
+                <div class="dv-header">
+                    <div class="dv-header__aspect">Aspecto</div>
+                    <div class="dv-header__dev">Modo Dev (lab)</div>
+                    <div class="dv-header__prod">Producción</div>
+                </div>
+                {devVsProd.map((row) => (
+                    <div class="dv-row">
+                        <div class="dv-row__aspect">{row.aspect}</div>
+                        <div class="dv-row__dev">{row.dev}</div>
+                        <div class="dv-row__prod">{row.prod}</div>
+                    </div>
+                ))}
+            </div>
+
+            <div class="info-card info-card--warn">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>El token dev-root-token es público.</strong> En modo
+                    dev, cualquiera con acceso al cluster puede leer este token
+                    del Deployment y usarlo para acceder a todos los secrets.
+                    En producción, el root token se genera con vault operator
+                    init y se almacena en un lugar seguro — nunca en un
+                    manifiesto.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Deployment ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">03</span>
+                <h2 class="overview-h2">Vault en k3s</h2>
+            </div>
+            <p class="overview-lead">
+                Vault corre como un Deployment de una sola réplica en el
+                namespace aiops. El binario oficial de HashiCorp se ejecuta con
+                el flag <code>-dev</code> y expone su API en el puerto 8200 via
+                un Service ClusterIP.
+            </p>
+
+            <div class="code-block">
+                <div class="code-block__header">
+                    <span class="code-block__file">k3s/manifests/vault/deployment.yml (extracto)</span>
+                </div>
+                <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault
+  namespace: aiops
+spec:
+  replicas: 1
+  template:
+    spec:
+      serviceAccountName: vault
+      containers:
+        - name: vault
+          image: hashicorp/vault:1.16.2
+          command: ["vault", "server", "-dev"]
+          securityContext:
+            capabilities:
+              add: ["IPC_LOCK"]     # Previene swap de memoria con secrets
+          env:
+            - name: VAULT_DEV_ROOT_TOKEN_ID
+              value: "dev-root-token"
+            - name: VAULT_DEV_LISTEN_ADDRESS
+              value: "0.0.0.0:8200"
+          ports:
+            - containerPort: 8200
+          readinessProbe:
+            httpGet:
+              path: /v1/sys/health
+              port: 8200</code></pre>
+            </div>
+
+            <p class="overview-text">
+                El <code>securityContext.capabilities.add: ["IPC_LOCK"]</code>
+                permite que Vault use <code>mlock()</code> para evitar que el
+                kernel swapee memoria que contiene secrets a disco. En modo dev
+                esto está deshabilitado internamente, pero el capability se
+                mantiene por compatibilidad con el binario.
+            </p>
+        </div>
+
+        <!-- ═══ Dos Agentes ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">04</span>
+                <h2 class="overview-h2">Dos Agentes, Dos Niveles</h2>
+            </div>
+            <p class="overview-lead">
+                El proyecto usa dos mecanismos distintos para que los
+                workloads accedan a Vault. Uno opera dentro de Kubernetes
+                (Agent Injector), el otro a nivel de sistema operativo
+                (Vault Agent via systemd). No compiten — cubren capas
+                diferentes.
+            </p>
+
+            <div class="agents-grid">
+                {twoAgents.map((a) => (
+                    <div class="agent-card">
+                        <div class="agent-card__name">{a.name}</div>
+                        <div class="agent-card__meta">
+                            <span class="agent-card__where">{a.where}</span>
+                        </div>
+                        <div class="agent-card__how">
+                            <span class="agent-card__label">Cómo funciona:</span>
+                            {a.how}
+                        </div>
+                        <div class="agent-card__when">
+                            <span class="agent-card__label">Cuándo se usa:</span>
+                            {a.useWhen}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div class="info-card">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>En el lab actual, el Vault Agent de systemd tiene
+                    utilidad limitada.</strong> Vault está en modo dev con
+                    almacenamiento en memoria — los datos se pierden al
+                    reiniciar el pod. El Agent Injector es el mecanismo
+                    principal para el lab. El Agent de systemd se incluye como
+                    referencia para la transición a producción con
+                    almacenamiento persistente.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Injection Flow ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">05</span>
+                <h2 class="overview-h2">Flujo de Inyección de Secrets</h2>
+            </div>
+            <p class="overview-lead">
+                El Vault Agent Injector modifica pods en tiempo de creación
+                para que reciban secrets de Vault sin que el desarrollador
+                escriba una sola línea de código de autenticación. Siete pasos
+                desde la annotation hasta el secret en disco.
+            </p>
+
+            <div class="flow-list">
+                {injectionFlow.map((f) => (
+                    <div class="flow-item">
+                        <div class="flow-item__step">{f.step}</div>
+                        <div class="flow-item__content">
+                            <div class="flow-item__actor">{f.actor}</div>
+                            <div class="flow-item__action">{f.action}</div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">annotations en un Deployment</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-comment"># El desarrollador solo agrega esto al pod spec:</span></div>
+                    <div class="t-line"><span class="t-out">annotations:</span></div>
+                    <div class="t-line"><span class="t-out">  vault.hashicorp.com/agent-inject: "true"</span></div>
+                    <div class="t-line"><span class="t-out">  vault.hashicorp.com/agent-inject-secret-db: "secret/data/db"</span></div>
+                    <div class="t-line"><span class="t-out">  vault.hashicorp.com/role: "myapp"</span></div>
+                    <div class="t-line t-line--spacer"></div>
+                    <div class="t-line"><span class="t-comment"># El Injector hace el resto automáticamente.</span></div>
+                    <div class="t-line"><span class="t-comment"># El contenedor lee el secret de /vault/secrets/db</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Auth Methods ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">06</span>
+                <h2 class="overview-h2">Métodos de Autenticación</h2>
+            </div>
+            <p class="overview-lead">
+                Vault soporta múltiples métodos de autenticación. El proyecto
+                usa Kubernetes Auth para pods y AppRole para procesos del SO.
+                Los tokens directos se evitan por diseño — son el equivalente a
+                passwords hardcodeadas.
+            </p>
+
+            <div class="auth-list">
+                {vaultAuthMethods.map((m) => (
+                    <div class={`auth-row ${m.used ? "auth-row--used" : ""}`}>
+                        <div class="auth-row__header">
+                            <code class="auth-row__method">{m.method}</code>
+                            <span class="auth-row__who">{m.who}</span>
+                            {m.used && <span class="auth-row__tag">en uso</span>}
+                        </div>
+                        <div class="auth-row__how">{m.how}</div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <!-- ═══ Lab → OCI ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">07</span>
+                <h2 class="overview-h2">Vault Self-Hosted → OCI Vault</h2>
+            </div>
+            <p class="overview-lead">
+                Una de las decisiones de arquitectura más importantes del
+                proyecto: en el lab local, Vault es self-hosted. En Oracle
+                Cloud, se reemplaza por OCI Vault — el servicio gestionado.
+
+            </p>
+
+            <div class="migrate-row">
+                <div class="migrate-card migrate-card--local">
+                    <div class="migrate-card__label">Lab Local</div>
+                    <div class="migrate-card__title">HashiCorp Vault self-hosted</div>
+                    <div class="migrate-card__list">
+                        <span>El equipo gestiona el servidor</span>
+                        <span>Unseal keys bajo responsabilidad propia</span>
+                        <span>Políticas ACL manuales</span>
+                        <span>Alta disponibilidad manual (Raft)</span>
+                    </div>
+                </div>
+                <div class="migrate-arrow">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+                <div class="migrate-card migrate-card--oci">
+                    <div class="migrate-card__label">Oracle Cloud</div>
+                    <div class="migrate-card__title">OCI Vault (managed)</div>
+                    <div class="migrate-card__list">
+                        <span>Oracle gestiona la infraestructura</span>
+                        <span>HA y backup automáticos</span>
+                        <span>IAM policies en lugar de ACL</span>
+                        <span>Integración nativa con OCI services</span>
+                    </div>
+                </div>
+            </div>
+
+            <p class="overview-text">
+                El valor del proyecto no está en usar un Vault u otro — está en
+                entender la diferencia operacional entre self-hosted y managed.
+                Poder explicar cuándo elegir cada uno y qué implicaciones tiene
+                (disponibilidad, responsabilidad, costo) es fundamental para
+                tomar decisiones de arquitectura informadas.
+            </p>
+        </div>
+
+        <!-- ═══ CTA ═══ -->
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card">
+                <div class="cta-card__content">
+                    <h3 class="cta-card__title">Siguiente: Vault Agent Injector</h3>
+                    <p class="cta-card__desc">
+                        La siguiente página profundiza en el mecanismo de
+                        inyección de secrets: cómo funciona el Mutating
+                        Admission Webhook, qué annotations necesita un pod y
+                        cómo se configura el Injector en k3s.
+                    </p>
+                </div>
+                <a href="/aiops-lab/phase-3/vault-agent-injector" class="cta-card__btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>
+                    Vault Agent Injector
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+
+    .f3-hero {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.75rem;
+        margin-bottom: 3rem;
+    }
+    .f3-hero__top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .f3-hero__badge {
+        display: inline-flex; align-items: center; gap: 0.4rem;
+        font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-300);
+        padding: 0.35rem 0.7rem; border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border);
+    }
+    .f3-hero__time {
+        font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-dim);
+        padding: 0.35rem 0.65rem; border-radius: 0.4rem;
+        border: 1px solid var(--border); background: rgba(255, 255, 255, 0.02);
+    }
+    .f3-hero__title {
+        font-family: var(--font-display); font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 700; color: var(--green-50); line-height: 1.15; margin-bottom: 0.5rem;
+    }
+    .f3-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f3-hero__subtitle { font-size: var(--text-md); color: var(--text-muted); line-height: 1.6; max-width: 560px; }
+
+    .overview-section { margin-bottom: 3rem; }
+    .overview-section--cta { margin-top: 1rem; }
+    .section-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.6rem; }
+    .section-num { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--green-600); font-weight: 500; }
+    .overview-h2 { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 600; color: var(--green-50); margin: 0; }
+    .overview-lead { font-size: var(--text-base); color: var(--text-muted); line-height: 1.65; margin-bottom: 1.5rem; max-width: 560px; }
+    .overview-text { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.65; margin-bottom: 1rem; }
+    .overview-text code {
+        font-family: var(--font-mono); font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06); padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem; color: var(--green-300);
+    }
+
+    /* ── Why Grid ── */
+    .why-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-bottom: 1rem; }
+    .why-card {
+        background: rgba(255, 255, 255, 0.015); border: 1px solid var(--border);
+        border-radius: 0.75rem; padding: 1.1rem;
+    }
+    .why-card__icon { color: var(--green-400); margin-bottom: 0.6rem; }
+    .why-card__icon svg { width: 18px; height: 18px; display: block; }
+    .why-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin-bottom: 0.3rem; }
+    .why-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+
+    /* ── Dev vs Prod Table ── */
+    .dv-table { border: 1px solid var(--border); border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem; }
+    .dv-header {
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0;
+        background: rgba(255, 255, 255, 0.025); border-bottom: 1px solid var(--border);
+    }
+    .dv-header__aspect, .dv-header__dev, .dv-header__prod {
+        font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim);
+        padding: 0.5rem 0.75rem; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    .dv-row {
+        display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0;
+        border-bottom: 1px solid var(--border); font-size: var(--text-sm);
+    }
+    .dv-row:last-child { border-bottom: none; }
+    .dv-row__aspect {
+        font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 500;
+        color: var(--green-50); padding: 0.55rem 0.75rem; background: rgba(255, 255, 255, 0.01);
+    }
+    .dv-row__dev, .dv-row__prod { color: var(--text-muted); padding: 0.55rem 0.75rem; line-height: 1.45; }
+    .dv-row__prod { background: rgba(34, 197, 94, 0.02); }
+
+    /* ── Info Card ── */
+    .info-card {
+        display: flex; gap: 0.65rem; padding: 0.875rem 1rem;
+        background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border);
+        border-radius: 0.6rem; font-size: var(--text-sm); color: var(--text-muted); line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+    .info-card--warn { border-color: rgba(234, 179, 8, 0.25); background: rgba(234, 179, 8, 0.04); }
+    .info-card--warn .info-card__icon { color: #eab308; }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .info-card__text code {
+        font-family: var(--font-mono); font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06); padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem; color: var(--green-300);
+    }
+
+    /* ── Code Block ── */
+    .code-block {
+        background: #0a0a0a; border: 1px solid var(--border);
+        border-radius: 0.6rem; overflow: hidden; margin-bottom: 1rem;
+    }
+    .code-block__header {
+        display: flex; align-items: center; padding: 0.45rem 0.85rem;
+        background: rgba(255, 255, 255, 0.025); border-bottom: 1px solid var(--border);
+    }
+    .code-block__file { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .code-block pre { margin: 0; padding: 0.85rem; overflow-x: auto; }
+    .code-block code { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-muted); line-height: 1.55; }
+
+    /* ── Agents Grid ── */
+    .agents-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-bottom: 1rem; }
+    .agent-card {
+        background: rgba(255, 255, 255, 0.015); border: 1px solid var(--border);
+        border-radius: 0.75rem; padding: 1.1rem;
+    }
+    .agent-card__name { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin-bottom: 0.3rem; }
+    .agent-card__meta { margin-bottom: 0.65rem; }
+    .agent-card__where {
+        font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim);
+        padding: 0.15rem 0.4rem; border-radius: 0.25rem;
+        background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border);
+    }
+    .agent-card__how, .agent-card__when { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+    .agent-card__how { margin-bottom: 0.5rem; }
+    .agent-card__label {
+        font-family: var(--font-mono); font-size: var(--text-3xs); color: var(--text-dim);
+        text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 0.15rem;
+    }
+
+    /* ── Flow List ── */
+    .flow-list { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1.25rem; }
+    .flow-item { display: flex; gap: 0.65rem; padding: 0.5rem 0.75rem; background: rgba(255, 255, 255, 0.015); border: 1px solid var(--border); border-radius: 0.5rem; }
+    .flow-item__step {
+        display: flex; align-items: center; justify-content: center;
+        width: 1.5rem; height: 1.5rem; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border);
+        font-family: var(--font-mono); font-size: var(--text-2xs); font-weight: 600;
+        color: var(--green-400); flex-shrink: 0;
+    }
+    .flow-item__actor { font-family: var(--font-mono); font-size: var(--text-xs); font-weight: 600; color: var(--green-300); margin-bottom: 0.1rem; }
+    .flow-item__action { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.45; }
+
+    /* ── Terminal ── */
+    .terminal-block {
+        background: #0a0a0a; border: 1px solid var(--border);
+        border-radius: 0.6rem; overflow: hidden; font-family: var(--font-mono); font-size: var(--text-xs);
+        margin-bottom: 1.5rem;
+    }
+    .terminal-block__bar {
+        display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025); border-bottom: 1px solid var(--border);
+    }
+    .terminal-block__dots { display: flex; gap: 0.3rem; }
+    .terminal-block__dots span { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); display: block; }
+    .terminal-block__title { color: var(--text-dim); font-size: var(--text-2xs); margin-left: auto; margin-right: auto; padding-right: 2.5rem; }
+    .terminal-block__body { padding: 0.65rem 0.85rem; display: flex; flex-direction: column; gap: 0.1rem; }
+    .t-line { line-height: 1.5; }
+    .t-line--spacer { height: 0.35rem; }
+    .t-out { color: var(--text-dim); padding-left: 0; }
+    .t-comment { color: rgba(255, 255, 255, 0.25); font-style: italic; }
+
+    /* ── Auth List ── */
+    .auth-list { display: flex; flex-direction: column; gap: 0.4rem; }
+    .auth-row {
+        background: rgba(255, 255, 255, 0.015); border: 1px solid var(--border);
+        border-radius: 0.6rem; padding: 0.75rem 0.9rem;
+    }
+    .auth-row--used { border-color: rgba(34, 197, 94, 0.1); background: rgba(34, 197, 94, 0.02); }
+    .auth-row__header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; }
+    .auth-row__method { font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 600; color: var(--green-300); background: none; padding: 0; }
+    .auth-row__who { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); }
+    .auth-row__tag {
+        font-family: var(--font-mono); font-size: var(--text-4xs); color: var(--green-400);
+        padding: 0.1rem 0.3rem; border-radius: 0.2rem;
+        background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.15);
+    }
+    .auth-row__how { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; }
+
+    /* ── Migration Row ── */
+    .migrate-row { display: flex; align-items: stretch; gap: 0.75rem; margin-bottom: 1rem; }
+    .migrate-card {
+        flex: 1; background: rgba(255, 255, 255, 0.015); border: 1px solid var(--border);
+        border-radius: 0.75rem; padding: 1.1rem;
+    }
+    .migrate-card--oci { border-color: rgba(59, 130, 246, 0.1); background: rgba(59, 130, 246, 0.02); }
+    .migrate-card__label { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--text-dim); margin-bottom: 0.2rem; }
+    .migrate-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin-bottom: 0.5rem; }
+    .migrate-card__list { display: flex; flex-direction: column; gap: 0.25rem; }
+    .migrate-card__list span {
+        font-size: var(--text-sm); color: var(--text-muted); line-height: 1.45;
+        padding-left: 0.75rem; position: relative;
+    }
+    .migrate-card__list span::before { content: "—"; position: absolute; left: 0; color: var(--text-dim); }
+    .migrate-arrow {
+        display: flex; align-items: center; justify-content: center;
+        color: var(--green-500); flex-shrink: 0; padding: 0 0.25rem;
+    }
+    .migrate-arrow svg { width: 24px; height: 24px; }
+
+    /* ── CTA ── */
+    .cta-card {
+        display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+        padding: 1.25rem 1.5rem; background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border); border-radius: 0.75rem;
+    }
+    .cta-card__content { flex: 1; }
+    .cta-card__title { font-family: var(--font-display); font-size: var(--text-base); font-weight: 600; color: var(--green-50); margin: 0 0 0.25rem; }
+    .cta-card__desc { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.55; margin: 0; }
+    .cta-card__btn {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        font-family: var(--font-mono); font-size: var(--text-sm); font-weight: 500; color: var(--green-50);
+        background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border); border-radius: 0.5rem;
+        padding: 0.6rem 1rem; text-decoration: none; white-space: nowrap; flex-shrink: 0;
+        transition: background 0.2s, border-color 0.2s;
+    }
+    .cta-card__btn:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--border-hover); }
+    .cta-card__btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    @media (max-width: 700px) {
+        .why-grid, .agents-grid, .migrate-row { grid-template-columns: 1fr; }
+        .migrate-row { flex-direction: column; }
+        .migrate-arrow { transform: rotate(90deg); padding: 0.25rem 0; }
+        .dv-header, .dv-row { grid-template-columns: 1fr; }
+        .dv-header__dev, .dv-header__prod, .dv-row__dev, .dv-row__prod { border-top: 1px solid var(--border); }
+    }
+    @media (max-width: 600px) {
+        .cta-card { flex-direction: column; align-items: flex-start; }
+    }
+</style>

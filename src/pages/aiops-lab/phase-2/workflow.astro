@@ -1,0 +1,923 @@
+---
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+
+const initOutput = [
+    "Initializing the backend...",
+    "Initializing provider plugins...",
+    "- Finding hashicorp/kubernetes versions matching \"~> 2.30\"...",
+    "- Installing hashicorp/kubernetes v2.30.0...",
+    "- Installed hashicorp/kubernetes v2.30.0 (signed, key ID ...)",
+    "",
+    "OpenTofu has been successfully initialized!",
+    "",
+    "You may now begin working with OpenTofu.",
+].join("\n");
+
+const planOutput = [
+    "OpenTofu used the selected providers to generate the following execution plan.",
+    "Resource actions are indicated with the following symbols:",
+    "  + create",
+    "",
+    "OpenTofu will perform the following actions:",
+    "",
+    "  # kubernetes_namespace.aiops will be created",
+    '  + resource "kubernetes_namespace" "aiops" {',
+    '      + id = (known after apply)',
+    "",
+    '      + metadata {',
+    '          + name       = "aiops"',
+    '          + labels     = {',
+    '              + "app.kubernetes.io/part-of" = "aiops-lab"',
+    '              + "managed-by"                = "opentofu"',
+    "            }",
+    "        }",
+    "    }",
+    "",
+    "  # kubernetes_config_map.prometheus will be created",
+    '  + resource "kubernetes_config_map" "prometheus" {',
+    '      + data = {',
+    '          + "alert_rules.yml" = (sensitive value)',
+    '          + "prometheus.yml"  = (sensitive value)',
+    "        }",
+    "    }",
+    "",
+    "  # kubernetes_config_map.grafana will be created",
+    '  + resource "kubernetes_config_map" "grafana" {',
+    '      + data = {',
+    '          + "datasources.yml" = (sensitive value)',
+    "        }",
+    "    }",
+    "",
+    "Plan: 3 to add, 0 to change, 0 to destroy.",
+].join("\n");
+
+const applyOutput = [
+    "Do you want to perform these actions?",
+    "  OpenTofu will perform the actions described above.",
+    "  Only 'yes' will be accepted to approve.",
+    "",
+    "  Enter a value: yes",
+    "",
+    "kubernetes_namespace.aiops: Creating...",
+    "kubernetes_namespace.aiops: Creation complete after 1s",
+    "kubernetes_config_map.prometheus: Creating...",
+    "kubernetes_config_map.prometheus: Creation complete after 0s",
+    "kubernetes_config_map.grafana: Creating...",
+    "kubernetes_config_map.grafana: Creation complete after 0s",
+    "",
+    "Apply complete! Resources: 3 added, 0 changed, 0 destroyed.",
+    "",
+    "Outputs:",
+    'namespace_name = "aiops"',
+    'prometheus_configmap_name = "prometheus-config"',
+    'grafana_configmap_name = "grafana-datasources"',
+].join("\n");
+
+const steps = [
+    {
+        title: "tofu init",
+        cmd: "tofu init",
+        desc: "Descarga los providers declarados en el bloque required_providers. Crea el directorio .terraform/ con los binarios y un lock file (.terraform.lock.hcl) que fija las versiones exactas. Solo se ejecuta una vez al clonar el repo o al agregar un provider nuevo.",
+        when: "Primera vez o al cambiar providers",
+        dir: "tofu/",
+    },
+    {
+        title: "tofu plan",
+        cmd: "tofu plan",
+        desc: "Compara el estado deseado (archivos .tf) con el estado real (terraform.tfstate). Muestra un diff legible de qué recursos se van a crear (+), modificar (~) o destruir (-). El plan es de solo lectura — no modifica nada. Es la oportunidad de revisar cambios antes de aplicarlos.",
+        when: "Cada vez que se modifican archivos .tf",
+        dir: "tofu/",
+    },
+    {
+        title: "tofu apply",
+        cmd: "tofu apply",
+        desc: "Aplica el plan generado por tofu plan. Pide confirmación interactiva (yes). Crea, modifica o destruye recursos para que el estado real del cluster coincida con el declarado en los archivos .tf. Actualiza terraform.tfstate con los IDs y metadata de los recursos creados.",
+        when: "Después de revisar el plan",
+        dir: "tofu/",
+    },
+];
+
+const destroySteps = [
+    {
+        title: "tofu destroy",
+        cmd: "tofu destroy",
+        desc: "El inverso de apply. Destruye todos los recursos gestionados por este stack de OpenTofu. Útil para limpiar el cluster sin dejar recursos huérfanos. Pide confirmación interactiva.",
+        when: "Para limpiar el cluster completamente",
+        dir: "tofu/",
+    },
+    {
+        title: "tofu state list",
+        cmd: "tofu state list",
+        desc: "Lista todos los recursos que OpenTofu está gestionando actualmente según el state file. Útil para verificar qué recursos existen sin tener que aplicar cambios.",
+        when: "Para inspeccionar el estado actual",
+        dir: "tofu/",
+    },
+    {
+        title: "tofu output",
+        cmd: "tofu output",
+        desc: "Muestra los valores de los outputs definidos en outputs.tf. Después de un apply, permite consultar nombres de recursos, IPs, OCIDs sin necesidad de abrir la consola de Kubernetes o OCI.",
+        when: "Después de apply, para obtener valores generados",
+        dir: "tofu/",
+    },
+];
+
+const fileRoles = [
+    { file: ".terraform/", role: "Directorio generado", desc: "Contiene los binarios de los providers descargados. Se ignora en .gitignore — no se commitea." },
+    { file: ".terraform.lock.hcl", role: "Lock file", desc: "Fija las versiones exactas de los providers y sus checksums. Se commitea para garantizar builds reproducibles entre máquinas." },
+    { file: "terraform.tfstate", role: "State file", desc: "Mapeo entre recursos declarados en .tf y recursos reales en el provider. Contiene IDs, metadata y dependencias. Sin este archivo, OpenTofu no sabe qué recursos gestiona." },
+    { file: "terraform.tfstate.backup", role: "Backup del state", desc: "Copia del state anterior. OpenTofu lo crea automáticamente antes de cada apply. Si algo sale mal, se puede restaurar." },
+];
+---
+
+<DocsLayout
+    title="Workflow init → plan → apply - ITOps Automation Lab"
+    description="Fase 2 del Rocky Linux ITOps Automation Lab: workflow completo de OpenTofu — init, plan, apply, destroy y gestión del state file."
+    activePage="workflow"
+    prev={{
+        label: "Kubernetes Provider",
+        href: "/aiops-lab/phase-2/kubernetes-provider",
+    }}
+    next={{
+        label: "IaC vs Configuration Management",
+        href: "/aiops-lab/phase-2/iac-vs-config",
+    }}
+>
+    <div class="docs-page">
+        <!-- ═══ Hero ═══ -->
+        <div class="f2-hero">
+            <div class="f2-hero__top">
+                <div class="f2-hero__badge">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    Fase 2.2
+                </div>
+                <span class="f2-hero__time">init → plan → apply</span>
+            </div>
+
+            <h1 class="f2-hero__title">
+                Workflow
+                <span class="f2-hero__accent">· init → plan → apply</span>
+            </h1>
+            <p class="f2-hero__subtitle">
+                El ciclo de trabajo con OpenTofu se reduce a tres comandos.
+                Cada uno tiene un propósito claro y un momento específico
+                en el que se ejecuta. Entender este flujo es entender cómo
+                funciona la infraestructura como código declarativa.
+            </p>
+        </div>
+
+        <!-- ═══ The Three Commands ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">01</span>
+                <h2 class="overview-h2">Los Tres Comandos</h2>
+            </div>
+            <p class="overview-lead">
+                Tres comandos cubren el 90% del trabajo diario con OpenTofu.
+                El orden es fijo: init una vez, plan cada vez que se modifica
+                código, apply para materializar los cambios.
+            </p>
+
+            <div class="steps-flow">
+                {steps.map((step, i) => (
+                    <div class="step-card">
+                        <div class="step-card__num">{i + 1}</div>
+                        <div class="step-card__content">
+                            <div class="step-card__header">
+                                <h3 class="step-card__title">{step.title}</h3>
+                                <span class="step-card__when">{step.when}</span>
+                            </div>
+                            <p class="step-card__desc">{step.desc}</p>
+                            <div class="step-card__run">
+                                <span class="step-card__dir">{step.dir}</span>
+                                <code>{step.cmd}</code>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <!-- ═══ init ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">02</span>
+                <h2 class="overview-h2">Paso 1: tofu init</h2>
+            </div>
+            <p class="overview-lead">
+                El primer comando que se ejecuta en un proyecto OpenTofu.
+                Descarga los providers, crea el directorio de trabajo y genera
+                el lock file. Sin init, ningún otro comando funciona.
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">tofu init</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">cd tofu && tofu init</span></div>
+                    <div class="t-line"><span class="t-out">{initOutput.split("\n")[0]}</span></div>
+                    <div class="t-line"><span class="t-out">{initOutput.split("\n")[1]}</span></div>
+                    <div class="t-line"><span class="t-out">{initOutput.split("\n")[2]}</span></div>
+                    <div class="t-line"><span class="t-out">{initOutput.split("\n")[3]}</span></div>
+                    <div class="t-line"><span class="t-out">{initOutput.split("\n")[4]}</span></div>
+                    <div class="t-line"><span class="t-out">{initOutput.split("\n")[5]}</span></div>
+                    <div class="t-line"><span class="t-out t-ok">{initOutput.split("\n")[6]}</span></div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>¿Cuándo volver a ejecutar init?</strong> Solo cuando
+                    se agrega un provider nuevo, se cambia la versión de un
+                    provider existente, o se clona el repo en una máquina nueva.
+                    El directorio .terraform/ está en .gitignore — cada
+                    desarrollador ejecuta init localmente.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ plan ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">03</span>
+                <h2 class="overview-h2">Paso 2: tofu plan</h2>
+            </div>
+            <p class="overview-lead">
+                El comando más importante del workflow. Compara el estado
+                deseado contra el real y muestra exactamente qué va a cambiar.
+                Ejecutar plan antes de apply no es opcional — es la práctica
+                que evita destruir recursos por error.
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">tofu plan</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">tofu plan</span></div>
+                    {planOutput.split("\n").map((line) => (
+                        <div class="t-line"><span class="t-out">{line}</span></div>
+                    ))}
+                </div>
+            </div>
+
+            <div class="info-card info-card--warn">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>Atención al símbolo - (destroy).</strong> Si plan
+                    muestra recursos con - (menos), significa que OpenTofu va a
+                    destruirlos. Esto puede pasar si un recurso fue comentado
+                    o eliminado de los archivos .tf. Revisar siempre el plan
+                    completo antes de confirmar el apply.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ apply ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">04</span>
+                <h2 class="overview-h2">Paso 3: tofu apply</h2>
+            </div>
+            <p class="overview-lead">
+                El comando que materializa los cambios. Pide confirmación
+                explícita (escribir &quot;yes&quot;) y luego crea, modifica o
+                destruye los recursos necesarios para alinear el estado real
+                con el deseado.
+            </p>
+
+            <div class="terminal-block">
+                <div class="terminal-block__bar">
+                    <div class="terminal-block__dots"><span></span><span></span><span></span></div>
+                    <span class="terminal-block__title">tofu apply</span>
+                </div>
+                <div class="terminal-block__body">
+                    <div class="t-line"><span class="t-prompt">$</span><span class="t-cmd">tofu apply</span></div>
+                    {applyOutput.split("\n").map((line) => {
+                        const isYes = line.includes("yes");
+                        const isOk = line.includes("complete") || line.includes("Output");
+                        const cls = isYes ? "t-ok" : isOk ? "t-ok" : "";
+                        return <div class="t-line"><span class={`t-out ${cls}`}>{line}</span></div>;
+                    })}
+                </div>
+            </div>
+
+            <div class="info-card info-card--tip">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>Skip de confirmación.</strong> Para entornos de CI/CD
+                    donde no hay un humano para escribir yes, se usa
+                    tofu apply -auto-approve. En el lab local, la confirmación
+                    manual es la opción más segura.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Comandos Adicionales ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">05</span>
+                <h2 class="overview-h2">Comandos Adicionales</h2>
+            </div>
+            <p class="overview-lead">
+                Más allá de init → plan → apply, hay tres comandos útiles para
+                el día a día. No se usan en cada ciclo, pero son esenciales
+                cuando se necesitan.
+            </p>
+
+            <div class="extra-grid">
+                {destroySteps.map((s) => (
+                    <div class="extra-card">
+                        <div class="extra-card__header">
+                            <h3 class="extra-card__title">{s.title}</h3>
+                            <span class="extra-card__when">{s.when}</span>
+                        </div>
+                        <p class="extra-card__desc">{s.desc}</p>
+                        <div class="extra-card__run">
+                            <span class="extra-card__dir">{s.dir}</span>
+                            <code>{s.cmd}</code>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <!-- ═══ Archivos Generados ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">06</span>
+                <h2 class="overview-h2">Archivos Generados por OpenTofu</h2>
+            </div>
+            <p class="overview-lead">
+                OpenTofu crea y mantiene varios archivos en el directorio de
+                trabajo. Cada uno tiene un propósito específico y reglas claras
+                sobre si se commitea o se ignora.
+            </p>
+
+            <div class="files-grid">
+                {fileRoles.map((f) => (
+                    <div class="file-card">
+                        <div class="file-card__header">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 7 20 7"/></svg>
+                            <code class="file-card__name">{f.file}</code>
+                        </div>
+                        <div class="file-card__role">{f.role}</div>
+                        <p class="file-card__desc">{f.desc}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div class="info-card info-card--warn">
+                <div class="info-card__icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="info-card__text">
+                    <strong>El state file NUNCA se edita manualmente.</strong>
+                    terraform.tfstate es JSON generado por OpenTofu. Editarlo a
+                    mano rompe la consistencia entre el estado deseado y el real.
+                    Si se necesita modificar el state, se usa tofu state mv o
+                    tofu import. Si el state se corrompe, se restaura desde
+                    terraform.tfstate.backup.
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Workflow en Oracle Cloud ═══ -->
+        <div class="overview-section">
+            <div class="section-header">
+                <span class="section-num">07</span>
+                <h2 class="overview-h2">Mismo Workflow, Distinto Provider</h2>
+            </div>
+            <p class="overview-lead">
+                El workflow init → plan → apply es idéntico para el provider
+                de OCI. La única diferencia es el directorio de trabajo y que
+                las variables sensibles (tenancy_ocid, fingerprint) se pasan
+                via terraform.tfvars o variables de entorno.
+            </p>
+
+            <div class="provider-compare">
+                <div class="pc-col pc-col--local">
+                    <div class="pc-col__label">Stack Local</div>
+                    <div class="pc-col__dir">tofu/</div>
+                    <div class="pc-col__cmds">
+                        <code>cd tofu</code>
+                        <code>tofu init</code>
+                        <code>tofu plan</code>
+                        <code>tofu apply</code>
+                    </div>
+                </div>
+                <div class="pc-divider">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </div>
+                <div class="pc-col pc-col--oci">
+                    <div class="pc-col__label">Stack OCI</div>
+                    <div class="pc-col__dir">tofu/oracle/</div>
+                    <div class="pc-col__cmds">
+                        <code>cd tofu/oracle</code>
+                        <code>tofu init</code>
+                        <code>tofu plan</code>
+                        <code>tofu apply</code>
+                    </div>
+                </div>
+            </div>
+
+            <p class="overview-text">
+                Los dos stacks son independientes. Cada uno tiene su propio
+                state file, sus propios providers y sus propias variables.
+                Se pueden aplicar en cualquier orden — no hay dependencia
+                entre ellos. El stack local se usa en el lab, el stack OCI
+                se usa en la Fase 9 para la migración a Oracle Cloud.
+            </p>
+        </div>
+
+        <!-- ═══ CTA ═══ -->
+        <div class="overview-section overview-section--cta">
+            <div class="cta-card">
+                <div class="cta-card__content">
+                    <h3 class="cta-card__title">Siguiente: IaC vs Config Management</h3>
+                    <p class="cta-card__desc">
+                        Con el workflow dominado, la última página de la Fase 2
+                        profundiza en la diferencia conceptual entre
+                        Infrastructure as Code (OpenTofu) y Configuration
+                        Management (Ansible) — y por qué el proyecto usa ambos.
+                    </p>
+                </div>
+                <a href="/aiops-lab/phase-2/iac-vs-config" class="cta-card__btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0118.8-4.3M22 12.5a10 10 0 01-18.8 4.2"/></svg>
+                    IaC vs Config
+                </a>
+            </div>
+        </div>
+    </div>
+</DocsLayout>
+
+<style is:global>
+    .docs-page { max-width: 740px; }
+
+    .f2-hero {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+        padding: 1.75rem;
+        margin-bottom: 3rem;
+    }
+    .f2-hero__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.25rem;
+    }
+    .f2-hero__badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-300);
+        padding: 0.35rem 0.7rem;
+        border-radius: 0.4rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--border);
+    }
+    .f2-hero__time {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        padding: 0.35rem 0.65rem;
+        border-radius: 0.4rem;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+    }
+    .f2-hero__title {
+        font-family: var(--font-display);
+        font-size: clamp(1.5rem, 3vw, 2rem);
+        font-weight: 700;
+        color: var(--green-50);
+        line-height: 1.15;
+        margin-bottom: 0.5rem;
+    }
+    .f2-hero__accent { color: var(--green-500); font-weight: 500; }
+    .f2-hero__subtitle {
+        font-size: var(--text-md);
+        color: var(--text-muted);
+        line-height: 1.6;
+        max-width: 560px;
+    }
+
+    .overview-section { margin-bottom: 3rem; }
+    .overview-section--cta { margin-top: 1rem; }
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        margin-bottom: 0.6rem;
+    }
+    .section-num {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--green-600);
+        font-weight: 500;
+    }
+    .overview-h2 {
+        font-family: var(--font-display);
+        font-size: var(--text-xl);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0;
+    }
+    .overview-lead {
+        font-size: var(--text-base);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1.5rem;
+        max-width: 560px;
+    }
+    .overview-text {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.65;
+        margin-bottom: 1rem;
+    }
+
+    /* ── Steps Flow ── */
+    .steps-flow {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+    }
+    .step-card {
+        display: flex;
+        gap: 0.85rem;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+    }
+    .step-card__num {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-400);
+        flex-shrink: 0;
+    }
+    .step-card__content { flex: 1; min-width: 0; }
+    .step-card__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.35rem;
+    }
+    .step-card__title {
+        font-family: var(--font-mono);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0;
+    }
+    .step-card__when {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        white-space: nowrap;
+    }
+    .step-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0 0 0.5rem;
+    }
+    .step-card__run {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.25rem 0.6rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 0.35rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+    }
+    .step-card__dir { color: var(--text-dim); }
+    .step-card__run code {
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+
+    /* ── Info Cards ── */
+    .info-card {
+        display: flex;
+        gap: 0.65rem;
+        padding: 0.875rem 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.6;
+        margin-bottom: 1rem;
+    }
+    .info-card--tip {
+        border-color: rgba(34, 197, 94, 0.2);
+        background: rgba(34, 197, 94, 0.03);
+    }
+    .info-card--tip .info-card__icon { color: var(--green-400); }
+    .info-card--warn {
+        border-color: rgba(234, 179, 8, 0.25);
+        background: rgba(234, 179, 8, 0.04);
+    }
+    .info-card--warn .info-card__icon { color: #eab308; }
+    .info-card__icon { flex-shrink: 0; color: var(--green-400); margin-top: 0.1rem; }
+    .info-card__icon svg { width: 16px; height: 16px; display: block; }
+    .info-card__text strong { color: var(--green-50); font-weight: 600; }
+    .info-card__text code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        color: var(--green-300);
+    }
+
+    /* ── Terminal ── */
+    .terminal-block {
+        background: #0a0a0a;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        margin-bottom: 1rem;
+    }
+    .terminal-block__bar {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.025);
+        border-bottom: 1px solid var(--border);
+    }
+    .terminal-block__dots { display: flex; gap: 0.3rem; }
+    .terminal-block__dots span {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.15);
+        display: block;
+    }
+    .terminal-block__title {
+        color: var(--text-dim);
+        font-size: var(--text-2xs);
+        margin-left: auto;
+        margin-right: auto;
+        padding-right: 2.5rem;
+    }
+    .terminal-block__body {
+        padding: 0.65rem 0.85rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+    }
+    .t-line { line-height: 1.5; }
+    .t-prompt { color: var(--green-600); margin-right: 0.3rem; }
+    .t-cmd { color: var(--green-300); }
+    .t-out { color: var(--text-dim); padding-left: 0.2rem; }
+    .t-ok { color: var(--green-400); }
+
+    /* ── Extra Grid ── */
+    .extra-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .extra-card {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        padding: 1rem;
+    }
+    .extra-card__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        margin-bottom: 0.35rem;
+    }
+    .extra-card__title {
+        font-family: var(--font-mono);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0;
+    }
+    .extra-card__when {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        white-space: nowrap;
+    }
+    .extra-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0 0 0.5rem;
+    }
+    .extra-card__run {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.25rem 0.6rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 0.35rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+    }
+    .extra-card__dir { color: var(--text-dim); }
+    .extra-card__run code {
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+
+    /* ── Files Grid ── */
+    .files-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        margin-bottom: 1rem;
+    }
+    .file-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 0.75rem 0.9rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+    }
+    .file-card__header {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        flex-shrink: 0;
+        min-width: 160px;
+    }
+    .file-card__header svg {
+        width: 14px;
+        height: 14px;
+        color: var(--text-dim);
+        flex-shrink: 0;
+    }
+    .file-card__name {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        font-weight: 500;
+        color: var(--green-300);
+        background: none;
+        padding: 0;
+    }
+    .file-card__role {
+        font-family: var(--font-mono);
+        font-size: var(--text-3xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.2rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        flex-shrink: 0;
+    }
+    .file-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.45;
+        margin: 0;
+        flex: 1;
+    }
+
+    /* ── Provider Compare ── */
+    .provider-compare {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1.25rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .pc-col { flex: 1; }
+    .pc-col__label {
+        font-family: var(--font-mono);
+        font-size: var(--text-2xs);
+        color: var(--text-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 0.25rem;
+    }
+    .pc-col__dir {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--green-300);
+        margin-bottom: 0.5rem;
+    }
+    .pc-col__cmds {
+        display: flex;
+        flex-direction: column;
+        gap: 0.15rem;
+    }
+    .pc-col__cmds code {
+        font-family: var(--font-mono);
+        font-size: var(--text-xs);
+        color: var(--text-dim);
+        background: none;
+        padding: 0;
+    }
+    .pc-col--local {
+        border-right: 1px solid var(--border);
+        padding-right: 1rem;
+    }
+    .pc-divider { color: var(--green-500); flex-shrink: 0; }
+    .pc-divider svg { width: 20px; height: 20px; }
+
+    /* ── CTA ── */
+    .cta-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1.25rem 1.5rem;
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+    }
+    .cta-card__content { flex: 1; }
+    .cta-card__title {
+        font-family: var(--font-display);
+        font-size: var(--text-base);
+        font-weight: 600;
+        color: var(--green-50);
+        margin: 0 0 0.25rem;
+    }
+    .cta-card__desc {
+        font-size: var(--text-sm);
+        color: var(--text-muted);
+        line-height: 1.55;
+        margin: 0;
+    }
+    .cta-card__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--green-50);
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 0.6rem 1rem;
+        text-decoration: none;
+        white-space: nowrap;
+        flex-shrink: 0;
+        transition: background 0.2s, border-color 0.2s;
+    }
+    .cta-card__btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--border-hover);
+    }
+    .cta-card__btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    @media (max-width: 700px) {
+        .provider-compare { flex-direction: column; gap: 0.5rem; }
+        .pc-col--local { border-right: none; border-bottom: 1px solid var(--border); padding-right: 0; padding-bottom: 0.5rem; }
+        .file-card { flex-wrap: wrap; }
+        .file-card__header { min-width: auto; }
+        .file-card__role { margin-left: auto; }
+    }
+    @media (max-width: 600px) {
+        .step-card__header { flex-direction: column; align-items: flex-start; gap: 0.2rem; }
+        .cta-card { flex-direction: column; align-items: flex-start; }
+    }
+</style>
